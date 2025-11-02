@@ -6,7 +6,7 @@ class IKeyExpansion
 public:
     virtual ~IKeyExpansion() = default;
 
-    virtual uint8_t** expandKey(uint8_t* key) = 0;
+    virtual uint8_t** expandKey(const uint8_t* key) = 0;
 };
 
 class IRoundFunction
@@ -14,6 +14,6 @@ class IRoundFunction
 public:
     virtual ~IRoundFunction() = default;
 
-    virtual uint8_t* roundKey(uint8_t* text, uint8_t* roundKey) = 0;
+    virtual uint8_t* roundFun(uint8_t* text, const uint8_t* roundKey) = 0;
 };
 
