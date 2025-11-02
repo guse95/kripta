@@ -1,28 +1,34 @@
 #include <iostream>
 #include <cstdint>
 
-void get_bit(uint8_t* text, size_t ind, bool is_indexing_strait)
+uint8_t get_bit(const uint8_t* text, const size_t ind, const size_t size_text, bool is_indexing_strait)
 {
-    size_t bit;
+    uint8_t bit;
     if (is_indexing_strait)
         bit = text[ind / 8] & (1 << (ind % 8));
     else
-        bit = text[(size - ind) / 8] & (1 << ((size - ind) % 8));
+        bit = text[(size_text - 1 - ind) / 8] & (1 << ((size_text - 1 - ind) % 8));
+    return bit > 0;
 }
 
-void set_bit(uint8_t* text, size_t ind)
+void set_bit(uint8_t* text, const size_t new_ind, uint8_t bit, const size_t size_text, bool is_indexing_strait)
 {
-    //TODO: переделать перестановки чтобы учитывался порядок индексации битов
+    if (is_indexing_strait)
+        text[new_ind / 8] |= bit << (new_ind % 8);
+    else
+        text[(size_text - 1 - new_ind) / 8] |= bit << ((size_text - 1 - new_ind) % 8);
 }
 
-void permutations(const unsigned char* value, const int* p_block, bool is_indexing_strait, size_t size)
+void permutations(const unsigned char* block, const size_t size_block,
+    const int* p_block, const size_t size_p,
+    bool is_indexing_strait) // strait == 63 -> 0
 {
-    unsigned char tmp[size / sizeof(char)];
+    unsigned char tmp[size_p / sizeof(char)]; // вроде нули
 
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i < size_p; i++)
     {
-        const uint8_t c = (value[p_block[i] / 8] & (1 << (p_block[i] % 8))) >> (p_block[i] % 8) << (i % 8);
-        tmp[i / 8] |= c;
+        const uint8_t bit = get_bit(block, p_block[i], size_block, is_indexing_strait);
+        set_bit(tmp, i, bit, size_p, is_indexing_strait);
     }
-    value = tmp;
+    block = tmp;
 }

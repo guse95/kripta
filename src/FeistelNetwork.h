@@ -9,7 +9,7 @@ class FeistelNetwork {
 public:
     FeistelNetwork(IKeyExpansion *_keyExpansion, IRoundFunction *_roundFunction) :
     keyExpansion(_keyExpansion), roundFunction(_roundFunction) {}
-
+    //TODO: реализовать методы ниже
     uint8_t* encryptBlock(uint8_t* text, uint8_t* key);
     uint8_t* decryptBlock(uint8_t* text, uint8_t* key);
 };
