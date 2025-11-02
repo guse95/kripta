@@ -19,8 +19,10 @@ public:
             auto *l = reinterpret_cast<uint32_t*>(text);
             auto *r = l + 1;
             const auto tmp = *l;
+
             *r = *l ^ *reinterpret_cast<uint32_t*>(
                 roundFunction->roundFun(reinterpret_cast<uint8_t*>(r), keys[i]));
+
             *l = tmp;
         }
         const auto tmp = reinterpret_cast<uint64_t*>(text);
@@ -35,8 +37,10 @@ public:
             auto *r = reinterpret_cast<uint32_t*>(text);
             auto *l = r + 1;
             const auto tmp = *l;
+
             *l = *r ^ *reinterpret_cast<uint32_t*>(
                 roundFunction->roundFun(reinterpret_cast<uint8_t*>(l), keys[i]));
+
             *r = tmp;
         }
         const auto tmp = reinterpret_cast<uint64_t*>(text);
