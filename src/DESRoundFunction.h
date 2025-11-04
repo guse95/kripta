@@ -69,7 +69,7 @@ class DESRoundFunction final : IRoundFunction
     void roundFun(uint8_t* text, uint8_t* result, uint8_t* roundKey) override
     {
         uint8_t new_text[8];
-        permutations(text, 32, E_table, 48, new_text, true);
+        permutations(text, 32, E_table, 48, new_text, true, false);
         const auto tmp_text = reinterpret_cast<uint64_t*>(new_text);
         const auto tmp_key = reinterpret_cast<uint64_t*>(roundKey);
         *tmp_text ^= *tmp_key;
@@ -81,5 +81,6 @@ class DESRoundFunction final : IRoundFunction
             const auto tmp_res = reinterpret_cast<uint32_t*>(result);
             *tmp_res |= (S_Table[7 - i][row_ind][col_ind]) << (4 * i);
         }
+        //TODO: P table
     }
 };

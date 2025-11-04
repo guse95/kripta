@@ -36,9 +36,9 @@ class DESKeyExpansion final : IKeyExpansion
         uint8_t tmp_c[4];
         uint8_t tmp_d[4];
 
-        permutations(key, 64, PC_1[0], 28, tmp_c, true);
+        permutations(key, 64, PC_1[0], 28, tmp_c, true, false);
         const auto c = reinterpret_cast<uint32_t*>(tmp_c);
-        permutations(key, 64, PC_1[1], 28, tmp_c, true);
+        permutations(key, 64, PC_1[1], 28, tmp_c, true,false);
         const auto d = reinterpret_cast<uint32_t*>(tmp_d);
 
         constexpr uint32_t mask = (1 << 28) - 1;
@@ -58,7 +58,7 @@ class DESKeyExpansion final : IKeyExpansion
             tmp_key_i |= *d;
             tmp_key_i <<= 8;
             permutations(reinterpret_cast<uint8_t*>(&tmp_key_i), 56,
-                PC_2, 48, new_keys + i * 6, true);
+                PC_2, 48, new_keys + i * 6, true, false);
         }
     }
 };
