@@ -6,7 +6,7 @@ class IKeyExpansion
 public:
     virtual ~IKeyExpansion() = default;
 
-    virtual void expandKey(const uint8_t* key, uint8_t** new_keys) = 0;
+    virtual void expandKey(const uint8_t* key, uint8_t* new_keys) = 0;
 };
 
 class IRoundFunction

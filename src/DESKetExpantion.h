@@ -1,4 +1,5 @@
 #pragma once
+
 #include "KeyExpansion.h"
 #include "P_Block.h"
 
@@ -30,7 +31,7 @@ const int PC_2[] = {
 
 class DESKeyExpansion final : IKeyExpansion
 {
-    void expandKey(const uint8_t* key, uint8_t** new_keys) override
+    void expandKey(const uint8_t* key, uint8_t* new_keys) override
     {
         uint8_t tmp_c[4];
         uint8_t tmp_d[4];
@@ -57,7 +58,7 @@ class DESKeyExpansion final : IKeyExpansion
             tmp_key_i |= *d;
             tmp_key_i <<= 8;
             permutations(reinterpret_cast<uint8_t*>(&tmp_key_i), 56,
-                PC_2, 48, new_keys[i], true);
+                PC_2, 48, new_keys + i * 6, true);
         }
     }
 };
