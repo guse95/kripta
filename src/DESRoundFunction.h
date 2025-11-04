@@ -13,6 +13,17 @@ const int E_table[] = {
     28, 29, 30, 31, 32, 1
 };
 
+const int P_table[] = {
+    16, 7, 20, 21,
+    29, 12, 28, 17,
+    1, 15, 23, 26,
+    5, 18, 31, 10,
+    2, 8, 24, 14,
+    32, 27, 3, 9,
+    19, 13, 30, 6,
+    22, 11, 4, 25,
+};
+
 const int S_Table[8][4][16] = {
     {
         {14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7},
@@ -74,13 +85,14 @@ class DESRoundFunction final : IRoundFunction
         const auto tmp_key = reinterpret_cast<uint64_t*>(roundKey);
         *tmp_text ^= *tmp_key;
 
+        uint32_t tmp_res = 0;
         for (int i = 0; i < 8; i++)
         {
             const auto row_ind = ((*tmp_text & (33 << (6 * i + 16))) >> (6 * i + 16)); // 100001
             const auto col_ind = ((*tmp_text & (30 << (6 * i + 16))) >> (6 * i + 16)); // 011110
-            const auto tmp_res = reinterpret_cast<uint32_t*>(result);
-            *tmp_res |= (S_Table[7 - i][row_ind][col_ind]) << (4 * i);
+            tmp_res |= (S_Table[7 - i][row_ind][col_ind]) << (4 * i);
         }
-        //TODO: P table
+        permutations(reinterpret_cast<uint8_t*>(&tmp_res), 32,
+            P_table, 32, result, true, false);
     }
 };
