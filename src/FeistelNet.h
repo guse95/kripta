@@ -10,6 +10,7 @@ class FeistelNet {
 public:
     FeistelNet(IKeyExpansion *_keyExpansion, IRoundFunction *_roundFunction) :
     keyExpansion(_keyExpansion), roundFunction(_roundFunction) {}
+    FeistelNet(const FeistelNet &other) = default;
 
     void encryptBlock(uint8_t* text, const uint8_t* key) const
     {
@@ -44,12 +45,12 @@ public:
 
             uint32_t FunRes;
             roundFunction->roundFun(reinterpret_cast<uint8_t*>(l),
-                reinterpret_cast<uint8_t*>(&FunRes), keys + i * 6);
+                reinterpret_cast<uint8_t*>(&FunRes), keys + (15 - i) * 6);
 
             *l = *r ^ FunRes;
             *r = tmp;
         }
-        const auto tmp = reinterpret_cast<uint64_t*>(text);
-        *tmp = (*tmp << 32) | (*tmp >> 32);
+        const auto text_64 = reinterpret_cast<uint64_t*>(text);
+        *text_64 = (*text_64 << 32) | (*text_64 >> 32);
     }
 };
