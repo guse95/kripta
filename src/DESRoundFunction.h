@@ -74,13 +74,15 @@ const int S_Table[8][4][16] = {
         {2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11}
     }
 };
+// 0010 1111 1111 1110 1010 0111 1111 1111
+// 0101 1111 1111 1101 0100 1111 1111 1111 1111 1111 1111 1111 1111 0000 0000
 
-class DESRoundFunction final : IRoundFunction
+class DESRoundFunction : public IRoundFunction
 {
     void roundFun(uint8_t* text, uint8_t* result, uint8_t* roundKey) override
     {
         uint8_t new_text[8];
-        permutations(text, 32, E_table, 48, new_text, true, false);
+        permutations(text, 32, E_table, 48, new_text);
         const auto tmp_text = reinterpret_cast<uint64_t*>(new_text);
         const auto tmp_key = reinterpret_cast<uint64_t*>(roundKey);
         *tmp_text ^= *tmp_key;
@@ -88,11 +90,13 @@ class DESRoundFunction final : IRoundFunction
         uint32_t tmp_res = 0;
         for (int i = 0; i < 8; i++)
         {
-            const auto row_ind = ((*tmp_text & (33 << (6 * i + 16))) >> (6 * i + 16)); // 100001
-            const auto col_ind = ((*tmp_text & (30 << (6 * i + 16))) >> (6 * i + 16)); // 011110
+            const auto row_ind = ((*tmp_text & (32u << (6 * i + 16))) >> (6 * i + 16 + 4)) |
+                ((*tmp_text & (1 << (6 * i + 16))) >> (6 * i + 16)); // 100001
+            const auto col_ind = (*tmp_text & (30u << (6 * i + 16))) >> (6 * i + 17); // 011110
+
             tmp_res |= (S_Table[7 - i][row_ind][col_ind]) << (4 * i);
         }
         permutations(reinterpret_cast<uint8_t*>(&tmp_res), 32,
-            P_table, 32, result, true, false);
+            P_table, 32, result);
     }
 };

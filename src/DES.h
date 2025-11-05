@@ -1,5 +1,6 @@
 #pragma once
 #include "DESKetExpantion.h"
+#include "DESRoundFunction.h"
 #include "FeistelNet.h"
 #include "ISymmetricCypher.h"
 
@@ -27,27 +28,32 @@ const int IP_1[] = {
 };
 
 
-class DES final : ISymmetricCypher
+class DES : public ISymmetricCypher
 {
     FeistelNet net;
 public:
-    explicit DES(const FeistelNet _net) : net(_net) {}
+
+    DES() : net(FeistelNet(new DESKeyExpansion(), new DESRoundFunction())) {}
     ~DES() override = default;
 
     void encrypt(uint8_t* text, uint8_t* encrText, uint8_t* key) override
     {
         uint8_t tmp[8];
-        permutations(text, 64, IP, 64, tmp, true, false);
+        printf("Start DES\n");
+        permutations(text, 64, IP, 64, tmp);
+        printf("Start feistel net \n");
         net.encryptBlock(tmp, key);
-        permutations(tmp, 64, IP_1, 64, encrText, true, false);
+        printf("end feistel net\n");
+        permutations(tmp, 64, IP_1, 64, encrText);
+        printf("end DES\n");
     }
 
     void decrypt(uint8_t* text, uint8_t* decrText, uint8_t* key) override
     {
         //TODO: узнать в каком порядке при дешифровании делать перестановки
         uint8_t tmp[8];
-        permutations(text, 64, IP, 64, tmp, true, false);
+        permutations(text, 64, IP, 64, tmp);
         net.decryptBlock(tmp, key);
-        permutations(tmp, 64, IP_1, 64, decrText, true, false);
+        permutations(tmp, 64, IP_1, 64, decrText);
     }
 };
