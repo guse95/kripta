@@ -12,7 +12,7 @@ int main()
     uint8_t key[8] = {10, 23, 54, 3, 124, 43, 76, 255};
 
     auto alg = new DES();
-    CipherContext Cont(alg, key, Mode::ECB, Padding::Zeros);
+    CipherContext Cont(alg, key, Mode::ECB, Padding::Zeros, nullptr, {2});
 
     constexpr uint64_t blocks = ((sizeof(text) + 7) / 8) * 8;
 
@@ -21,9 +21,9 @@ int main()
     Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encrtext);
 
     std::cout << "Encrypted text: " << std::endl;
-    for (uint64_t i = 0; i < blocks; i++)
+    for (const unsigned char i : encrtext)
     {
-        std::cout << encrtext[i] << " ";
+        std::cout << i << " ";
     }
     std::cout << std::endl;
 
