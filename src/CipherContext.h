@@ -40,12 +40,15 @@ public:
         }
     }
 
-    void threas_encr(uint8_t* data, const uint64_t start, const uint64_t end, uint8_t* output) const
+    static void threas_encr(const CipherContext* context, uint8_t* data,
+        const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, uint8_t* output)
     {
-        for (uint64_t i = start; i < end; ++i)
+        for (uint64_t i = 0; i * num_of_threads + ind_thread < num_of_blocks; ++i)
         {
-            algorithm->encrypt(data + i * block_size,
-                               output + i * block_size, key);
+            uint64_t ind_of_block = i * num_of_threads + ind_thread;
+
+            context->algorithm->encrypt(data + ind_of_block * context->block_size,
+                               output + ind_of_block * context->block_size, context->key);
             printf("encrypting end");
         }
     }
@@ -59,23 +62,12 @@ public:
                 //потоки
                 const uint64_t block_count = size / block_size;
                 std::vector<std::thread> threads;
-                const int num_threads = std::any_cast<int>(additional[0]);
-                uint64_t len = (block_count + num_threads - 1) / num_threads;
+                const int num_of_threads = std::any_cast<int>(additional[0]);
 
-                for (uint64_t i = 0; i < num_threads; i++)
+                for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                    uint64_t start = i * len;
-                    uint64_t end = (i == num_threads - 1) ? block_count : start + len;
-
-                    threads.emplace_back([this, data, start, end, output]()
-                    {
-                        for (uint64_t i = start; i < end; ++i)
-                        {
-                            algorithm->encrypt(data + i * block_size,
-                                               output + i * block_size, key);
-                            printf("encrypting end");
-                        }
-                    }); // [start, end)
+                    threads.emplace_back(threas_encr,
+                        this, data, i, num_of_threads, block_count, output); // [start, end)
                 }
                 for (auto& t : threads)
                 {
