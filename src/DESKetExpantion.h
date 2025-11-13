@@ -33,15 +33,15 @@ class DESKeyExpansion : public IKeyExpansion
 {
     void expandKey(const uint8_t* key, uint8_t* new_keys) override
     {
-        uint8_t tmp_c[4];
-        uint8_t tmp_d[4];
+        uint8_t tmp_c[4] = {0};
+        uint8_t tmp_d[4] = {0};
 
         permutations(key, 64, PC_1[0], 28, tmp_c);
         const auto c = reinterpret_cast<uint32_t*>(tmp_c);
         permutations(key, 64, PC_1[1], 28, tmp_d);
         const auto d = reinterpret_cast<uint32_t*>(tmp_d);
 
-        constexpr uint32_t mask = (1 << 28) - 1;
+        constexpr uint32_t mask = (1u << 28) - 1;
         uint32_t shift;
 
         for (int i = 1; i <= 16; i++)
@@ -50,15 +50,14 @@ class DESKeyExpansion : public IKeyExpansion
                 shift = 1;
             else
                 shift = 2;
-            *c = ((*c << shift) | (*c >> (28 - shift))) & mask;
-            *d = ((*d << shift) | (*d >> (28 - shift))) & mask;
+            *c = ((*c << shift) | (*c >> (28u - shift))) & mask;
+            *d = ((*d << shift) | (*d >> (28u - shift))) & mask;
 
             uint64_t tmp_key_i = *c;
             tmp_key_i <<= 28;
             tmp_key_i |= *d;
-            tmp_key_i <<= 8;
             permutations(reinterpret_cast<uint8_t*>(&tmp_key_i), 56,
-                         PC_2, 48, new_keys + i * 6);
+                         PC_2, 48, new_keys + (i - 1) * 6);
         }
     }
 };

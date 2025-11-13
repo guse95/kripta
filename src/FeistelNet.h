@@ -14,15 +14,17 @@ public:
 
     void encryptBlock(uint8_t* text, const uint8_t* key) const
     {
-        uint8_t keys[96]; // 16 x 48 bit
+        uint8_t keys[96] = {0}; // 16 x 48 bit
         keyExpansion->expandKey(key, keys);
+
+        auto *l = reinterpret_cast<uint32_t*>(text);
+        auto *r = l + 1;
+
         for (size_t i = 0; i < 16; ++i)
         {
-            auto *l = reinterpret_cast<uint32_t*>(text);
-            auto *r = l + 1;
-            const auto tmp = *l;
 
-            uint32_t FunRes;
+            const auto tmp = *r;
+            uint32_t FunRes = 0;
             roundFunction->roundFun(reinterpret_cast<uint8_t*>(r),
                 reinterpret_cast<uint8_t*>(&FunRes), (keys + i * 6));
 
@@ -35,22 +37,23 @@ public:
 
     void decryptBlock(uint8_t* text, const uint8_t* key) const
     {
-        uint8_t keys[96]; // 16 x 48 bit
+        uint8_t keys[96] = {0}; // 16 x 48 bit
         keyExpansion->expandKey(key, keys);
+
+        auto *l = reinterpret_cast<uint32_t*>(text);
+        auto *r = l + 1;
+
         for (size_t i = 0; i < 16; ++i)
         {
-            auto *r = reinterpret_cast<uint32_t*>(text);
-            auto *l = r + 1;
-            const auto tmp = *l;
+            const auto tmp = *r;
+            uint32_t FunRes = 0;
+            roundFunction->roundFun(reinterpret_cast<uint8_t*>(r),
+                reinterpret_cast<uint8_t*>(&FunRes), (keys + (15 - i) * 6));
 
-            uint32_t FunRes;
-            roundFunction->roundFun(reinterpret_cast<uint8_t*>(l),
-                reinterpret_cast<uint8_t*>(&FunRes), keys + (15 - i) * 6);
-
-            *l = *r ^ FunRes;
-            *r = tmp;
+            *r = *l ^ FunRes;
+            *l = tmp;
         }
-        const auto text_64 = reinterpret_cast<uint64_t*>(text);
-        *text_64 = (*text_64 << 32) | (*text_64 >> 32);
+        const auto tmp = reinterpret_cast<uint64_t*>(text);
+        *tmp = (*tmp << 32) | (*tmp >> 32);
     }
 };
