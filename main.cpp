@@ -13,7 +13,7 @@ int main()
     uint8_t iv[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
     auto alg = new DES();
-    CipherContext Cont(alg, key, Mode::PCBC, Padding::ZEROS, iv, {2});
+    CipherContext Cont(alg, key, Mode::CFB, Padding::ZEROS, iv, {2});
 
     uint64_t encr_sz;
     uint8_t* encrtext = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encr_sz);
