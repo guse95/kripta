@@ -156,7 +156,7 @@ public:
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
                 *tmp_text ^= *tmp_iv;
                 algorithm->encrypt(service_block, output, key);
-                tmp_iv = reinterpret_cast<uint64_t*>(output);
+
 
                 for (uint64_t i = 0; i < block_count; ++i)
                 {
@@ -173,15 +173,53 @@ public:
                     tmp_text = reinterpret_cast<uint64_t*>(last_block);
                     tmp_iv = reinterpret_cast<uint64_t*>(output + block_count * block_size);
                     *tmp_text ^= *tmp_iv;
-                    tmp_iv = tmp_text;
                     algorithm->encrypt(last_block, output + (block_count + 1) * block_size, key);
-                    ++block_count;
                 }
 
                 return output;
             }
         case Mode::PCBC:
             {
+                uint64_t block_count = size / block_size;
+                const uint64_t rest = size % block_size;
+
+                output_len = (block_count + 1 + (rest != 0)) * block_size;
+                auto output = new uint8_t[output_len]();
+
+                uint8_t service_block[block_size] = {0};
+                service_block[0] = rest;
+
+                auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
+                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
+                uint64_t tmp_prev_text = *tmp_text;
+                *tmp_text ^= *tmp_iv;
+                algorithm->encrypt(service_block, output, key);
+
+
+                for (uint64_t i = 0; i < block_count; ++i)
+                {
+                    tmp_text = reinterpret_cast<uint64_t*>(data + i * block_size);
+                    tmp_iv = reinterpret_cast<uint64_t*>(output + i * block_size);
+
+                    tmp_prev_text ^= *tmp_iv;
+                    tmp_prev_text ^= *tmp_text;
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_prev_text),
+                                       output + (i + 1) * block_size, key);
+                    tmp_prev_text = *tmp_text; // копирование блока ((
+                }
+
+                if (rest != 0) {
+                    uint8_t last_block[block_size];
+                    paddingLastBlock(data, size, last_block);
+                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
+                    tmp_iv = reinterpret_cast<uint64_t*>(output + block_count * block_size);
+
+                    *tmp_text ^= *tmp_iv;
+                    *tmp_text ^= tmp_prev_text;
+                    algorithm->encrypt(last_block, output + (block_count + 1) * block_size, key);
+                }
+
+                return output;
                 break;
             }
         case Mode::CFB:
@@ -282,9 +320,6 @@ public:
                         {
                             uint64_t ind_of_block = j * num_of_threads + i;
 
-                            // this->algorithm->decrypt(data + ind_of_block * this->block_size,
-                            //                    output + ind_of_block * this->block_size, this->key);
-
                             this->algorithm->decrypt(data + (ind_of_block + 1) * this->block_size,
                                        output + ind_of_block * this->block_size, this->key);
 
@@ -314,6 +349,45 @@ public:
             }
         case Mode::PCBC:
             {
+                uint64_t block_count = size / block_size;
+                uint8_t service_block[block_size] = {0};
+
+                algorithm->decrypt(data, service_block, key);
+                auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
+                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
+                *tmp_text ^= *tmp_iv;
+                auto tmp_prev_text = tmp_text;
+
+                const uint64_t rest = service_block[0];
+                block_count -= 1 + (rest != 0);
+
+                output_len = block_count * block_size + rest;
+                auto output = new uint8_t[output_len]();
+
+                for (uint64_t i = 0; i < block_count; ++i)
+                {
+                    algorithm->decrypt(data + (i + 1) * block_size,
+                                       output + i * block_size, key);
+                    tmp_iv = reinterpret_cast<uint64_t*>(data + i * block_size);
+                    tmp_text = reinterpret_cast<uint64_t*>(output + i * block_size);
+                    *tmp_text ^= *tmp_iv;
+                    *tmp_text ^= *tmp_prev_text;
+                    tmp_prev_text = tmp_text;
+                }
+
+                if (rest) {
+                    uint8_t last_block[block_size] = {0};
+                    algorithm->decrypt(data + (block_count + 1) * block_size, last_block, key);
+                    tmp_iv = reinterpret_cast<uint64_t*>(data + block_count * block_size);
+                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
+                    *tmp_text ^= *tmp_iv;
+                    *tmp_text ^= *tmp_prev_text;
+                    tmp_prev_text = tmp_text;
+
+                    unpaddingLastBlock(last_block, rest, output + block_count * block_size);
+                }
+
+                return output;
                 break;
             }
         case Mode::CFB:
