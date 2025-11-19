@@ -102,7 +102,7 @@ public:
         printf("encrypting end %lu\n", ind_thread);
     }
 
-    uint64_t encrypt(uint8_t* data, uint64_t size, uint8_t* output)
+    uint8_t* encrypt(uint8_t* data, const uint64_t size, uint64_t& output_len)
     {
         switch (mode)
         {
@@ -110,6 +110,11 @@ public:
             {
                 //потоки
                 uint64_t block_count = size / block_size;
+                const uint64_t rest = size % block_size;
+
+                output_len = (block_count + 1 + (rest != 0)) * block_size;
+                auto output = new uint8_t[output_len]();
+
                 std::vector<std::thread> threads;
                 const int num_of_threads = std::any_cast<int>(additional[0]);
 
@@ -123,8 +128,7 @@ public:
                     t.join();
                 }
 
-                uint64_t rest = 0;
-                if ((rest = size % block_size) != 0) {
+                if (rest != 0) {
                     uint8_t last_block[block_size];
                     paddingLastBlock(data, size, last_block);
                     algorithm->encrypt(last_block, output + block_count * block_size, key);
@@ -135,7 +139,7 @@ public:
                 service_block[0] = rest;
                 algorithm->encrypt(service_block, output + block_count * block_size, key);
 
-                return (block_count + 1) * block_size;
+                return output;
             }
         case Mode::CBC:
             {
@@ -166,10 +170,10 @@ public:
             printf("Something went wrong (decryption)");
             break;
         }
-        return 0;
+        return nullptr;
     }
 
-    uint64_t decrypt(uint8_t* data, uint64_t size, uint8_t* output)
+    uint8_t* decrypt(uint8_t* data, const uint64_t size, uint64_t& output_len) const
     {
         switch (mode)
         {
@@ -177,13 +181,16 @@ public:
             {
                 //TODO: потоки
                 uint64_t block_count = size / block_size;
-                std::vector<std::thread> threads;
-                const int num_of_threads = std::any_cast<int>(additional[0]);
-
                 uint8_t service_block[block_size] = {0};
                 algorithm->decrypt(data + (block_count - 1) * block_size, service_block, key);
                 const uint64_t rest = service_block[0];
                 block_count -= 1 + (rest != 0);
+
+                output_len = block_count * block_size + rest;
+                auto output = new uint8_t[block_count * block_size + rest]();
+
+                std::vector<std::thread> threads;
+                const int num_of_threads = std::any_cast<int>(additional[0]);
 
                 for (uint64_t i = 0; i < num_of_threads; i++)
                 {
@@ -211,14 +218,7 @@ public:
                     unpaddingLastBlock(last_block, rest, output + block_count * block_size);
                 }
 
-                return block_count * block_size + rest;
-
-                // for (uint64_t i = 0; i < size / block_size; i++)
-                // {
-                //     algorithm->decrypt(data + i * block_size,
-                //                        output + i * block_size, key);
-                // }
-                // return size;
+                return output;
             }
         case Mode::CBC:
             {
@@ -249,7 +249,7 @@ public:
             printf("Something went wrong (decryption)");
             break;
         }
-        return 0;
+        return nullptr;
     }
 
     void encrypt(uint8_t* data, const std::string& outputPath);

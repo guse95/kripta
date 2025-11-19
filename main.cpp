@@ -14,21 +14,22 @@ int main()
     auto alg = new DES();
     CipherContext Cont(alg, key, Mode::ECB, Padding::ZEROS, nullptr, {2});
 
-    constexpr uint64_t blocks = ((sizeof(text) + 7) / 8) * 8;
+    uint64_t encr_sz;
+    uint8_t* encrtext = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encr_sz);
 
-    uint8_t encrtext[blocks + 8] = {0};
-
-    uint64_t encr_sz = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encrtext);
-
-    std::cout << "Encrypted text: " << std::endl;
-    for (const unsigned char i : encrtext)
+    if (encrtext == nullptr)
     {
-        std::cout << i << " ";
+        std::cerr << "Encrypt failed" << std::endl;
+    }
+    std::cout << "Encrypted text: " << std::endl;
+    for (int i = 0; i < encr_sz; i++)
+    {
+        std::cout << encrtext[i] << " ";
     }
     std::cout << std::endl;
 
-    uint8_t decrtext[encr_sz] = {0};
-    uint64_t decr_sz = Cont.decrypt(encrtext, encr_sz, decrtext);
+    uint64_t decr_sz;
+    uint8_t* decrtext = Cont.decrypt(encrtext, encr_sz, decr_sz);
 
     std::cout << "Decrypted text: " << std::endl;
     for (uint64_t i = 0; i < decr_sz - 1; i++)
@@ -37,4 +38,7 @@ int main()
         // printf("%c", decrtext[i]);
     }
     std::cout << std::endl;
+
+    delete[] encrtext;
+    delete[] decrtext;
 }
