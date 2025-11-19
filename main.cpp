@@ -10,9 +10,10 @@ int main()
     // uint8_t key[8] = {0, 124, 2, 0, 12, 0, 0, 132};
     uint8_t text[] = "Some text to check if DES works.\nIf you see this, I half won!";
     uint8_t key[8] = {10, 23, 54, 3, 124, 43, 76, 255};
+    uint8_t iv[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
     auto alg = new DES();
-    CipherContext Cont(alg, key, Mode::ECB, Padding::ZEROS, nullptr, {2});
+    CipherContext Cont(alg, key, Mode::CBC, Padding::ZEROS, iv, {2});
 
     uint64_t encr_sz;
     uint8_t* encrtext = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encr_sz);
