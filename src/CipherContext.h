@@ -11,7 +11,7 @@
 
 enum class Mode { ECB, CBC, PCBC, CFB, OFB, CTR, RandomDelta };
 
-enum class Padding { Zeros, ANSI_X923, PKCS7, ISO10126 };
+enum class Padding { ZEROS, ANSI_X923, PKCS7, ISO10126 };
 
 class   CipherContext
 {
@@ -40,7 +40,56 @@ public:
         }
     }
 
-    static void threas_encr(const CipherContext* context, uint8_t* data,
+    void paddingLastBlock(const uint8_t* data, const uint64_t size, uint8_t* last_block) const
+    {
+        const uint64_t rest = size % block_size;
+
+        if (padding != Padding::ISO10126){
+            last_block[block_size] = {0};
+        }
+        memcpy(last_block, data + size - rest, rest);
+
+        switch (padding)
+        {
+            case Padding::ZEROS:
+                {
+                    break;
+                }
+            case Padding::PKCS7:
+                {
+                    for (auto i = rest; i < block_size; i++)
+                    {
+                        last_block[i] = block_size - rest;
+                    }
+                    break;
+                }
+            case Padding::ANSI_X923:
+                {
+                    last_block[block_size - 1] = block_size - rest;
+                    break;
+                }
+            case Padding::ISO10126:
+                {
+                    last_block[block_size - 1] = block_size - rest;
+                    break;
+                }
+        default:
+            printf("Something went wrong (padding last block)");
+            break;
+        }
+
+    }
+
+    void unpaddingLastBlock(const uint8_t* last_block, const uint64_t rest, uint8_t* output) const
+    {
+        if (padding != Padding::ZEROS && last_block[block_size - 1] != block_size - rest)
+        {
+            std::cerr << "padding last block does not match(kod govno)" << std::endl;
+        }
+        memcpy(output, last_block, rest);
+    }
+
+    static void threadEncr(const CipherContext* context, uint8_t* data,
         const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, uint8_t* output)
     {
         for (uint64_t i = 0; i * num_of_threads + ind_thread < num_of_blocks; ++i)
@@ -49,41 +98,44 @@ public:
 
             context->algorithm->encrypt(data + ind_of_block * context->block_size,
                                output + ind_of_block * context->block_size, context->key);
-            printf("encrypting end");
         }
+        printf("encrypting end %lu\n", ind_thread);
     }
 
-    void encrypt(uint8_t* data, uint64_t size, uint8_t* output)
+    uint64_t encrypt(uint8_t* data, uint64_t size, uint8_t* output)
     {
         switch (mode)
         {
         case Mode::ECB:
             {
                 //потоки
-                const uint64_t block_count = size / block_size;
+                uint64_t block_count = size / block_size;
                 std::vector<std::thread> threads;
                 const int num_of_threads = std::any_cast<int>(additional[0]);
 
                 for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                    threads.emplace_back(threas_encr,
-                        this, data, i, num_of_threads, block_count, output); // [start, end)
+                    threads.emplace_back(threadEncr,
+                        this, data, i, num_of_threads, block_count, output);
                 }
                 for (auto& t : threads)
                 {
                     t.join();
                 }
 
-
-                uint64_t rest;
-                if ((rest = size % block_size) != 0)
-                {
-                    uint8_t last_block[block_size] = {0};
-                    memcpy(last_block, data + size - rest, rest);
-                    algorithm->encrypt(last_block, output + size - rest, key);
-                    //TODO: функция с "добивкой" последнего блока
+                uint64_t rest = 0;
+                if ((rest = size % block_size) != 0) {
+                    uint8_t last_block[block_size];
+                    paddingLastBlock(data, size, last_block);
+                    algorithm->encrypt(last_block, output + block_count * block_size, key);
+                    ++block_count;
                 }
-                break;
+
+                uint8_t service_block[block_size] = {0};
+                service_block[0] = rest;
+                algorithm->encrypt(service_block, output + block_count * block_size, key);
+
+                return (block_count + 1) * block_size;
             }
         case Mode::CBC:
             {
@@ -114,20 +166,59 @@ public:
             printf("Something went wrong (decryption)");
             break;
         }
+        return 0;
     }
 
-    void decrypt(uint8_t* data, uint64_t size, uint8_t* output)
+    uint64_t decrypt(uint8_t* data, uint64_t size, uint8_t* output)
     {
         switch (mode)
         {
         case Mode::ECB:
             {
                 //TODO: потоки
-                for (uint64_t i = 0; i < size / block_size; i++)
+                uint64_t block_count = size / block_size;
+                std::vector<std::thread> threads;
+                const int num_of_threads = std::any_cast<int>(additional[0]);
+
+                uint8_t service_block[block_size] = {0};
+                algorithm->decrypt(data + (block_count - 1) * block_size, service_block, key);
+                const uint64_t rest = service_block[0];
+                block_count -= 1 + (rest != 0);
+
+                for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                    algorithm->decrypt(data + i * block_size,
-                                       output + i * block_size, key);
+                threads.emplace_back([this, data, i, num_of_threads, block_count, output]
+                    {
+                    for (uint64_t j = 0; j * num_of_threads + i < block_count; ++j)
+                    {
+                        uint64_t ind_of_block = j * num_of_threads + i;
+
+                        this->algorithm->decrypt(data + ind_of_block * this->block_size,
+                                           output + ind_of_block * this->block_size, this->key);
+                    }
+                    printf("decrypting end %lu\n", i);
+                    });
                 }
+                for (auto& t : threads)
+                {
+                    t.join();
+                }
+
+                if (rest) {
+                    uint8_t last_block[block_size] = {0};
+                    algorithm->decrypt(data + block_count * block_size, last_block, key);
+
+                    unpaddingLastBlock(last_block, rest, output + block_count * block_size);
+                }
+
+                return block_count * block_size + rest;
+
+                // for (uint64_t i = 0; i < size / block_size; i++)
+                // {
+                //     algorithm->decrypt(data + i * block_size,
+                //                        output + i * block_size, key);
+                // }
+                // return size;
             }
         case Mode::CBC:
             {
@@ -158,6 +249,7 @@ public:
             printf("Something went wrong (decryption)");
             break;
         }
+        return 0;
     }
 
     void encrypt(uint8_t* data, const std::string& outputPath);

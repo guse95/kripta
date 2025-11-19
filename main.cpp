@@ -12,13 +12,13 @@ int main()
     uint8_t key[8] = {10, 23, 54, 3, 124, 43, 76, 255};
 
     auto alg = new DES();
-    CipherContext Cont(alg, key, Mode::ECB, Padding::Zeros, nullptr, {2});
+    CipherContext Cont(alg, key, Mode::ECB, Padding::ZEROS, nullptr, {2});
 
     constexpr uint64_t blocks = ((sizeof(text) + 7) / 8) * 8;
 
-    uint8_t encrtext[blocks] = {0};
+    uint8_t encrtext[blocks + 8] = {0};
 
-    Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encrtext);
+    uint64_t encr_sz = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encrtext);
 
     std::cout << "Encrypted text: " << std::endl;
     for (const unsigned char i : encrtext)
@@ -27,11 +27,11 @@ int main()
     }
     std::cout << std::endl;
 
-    uint8_t decrtext[blocks] = {0};
-    Cont.decrypt(encrtext, blocks, decrtext);
+    uint8_t decrtext[encr_sz] = {0};
+    uint64_t decr_sz = Cont.decrypt(encrtext, encr_sz, decrtext);
 
     std::cout << "Decrypted text: " << std::endl;
-    for (uint64_t i = 0; i < sizeof(text) - 1; i++)
+    for (uint64_t i = 0; i < decr_sz - 1; i++)
     {
         std::cout << decrtext[i];
         // printf("%c", decrtext[i]);

@@ -39,18 +39,13 @@ public:
     void encrypt(uint8_t* text, uint8_t* encrText, uint8_t* key) override
     {
         uint8_t tmp[8] = {0};
-        printf("Start DES\n");
         permutations(text, 64, IP, 64, tmp);
-        printf("Start feistel net \n");
         net.encryptBlock(tmp, key);
-        printf("end feistel net\n");
         permutations(tmp, 64, IP_1, 64, encrText);
-        printf("end DES\n");
     }
 
     void decrypt(uint8_t* text, uint8_t* decrText, uint8_t* key) override
     {
-        //TODO: узнать в каком порядке при дешифровании делать перестановки
         uint8_t tmp[8] = {0};
         permutations(text, 64, IP, 64, tmp);
         net.decryptBlock(tmp, key);
