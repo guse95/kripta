@@ -261,9 +261,47 @@ public:
 
                 return output;
             }
-        case Mode::OFB:
+        case Mode::OFB: // нет смысла в параллельности
             {
-                break;
+                uint64_t block_count = size / block_size;
+                const uint64_t rest = size % block_size;
+
+                output_len = (block_count + 1 + (rest != 0)) * block_size;
+                auto output = new uint8_t[output_len]();
+
+                uint8_t service_block[block_size] = {0};
+                service_block[0] = rest;
+
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(iv);
+                algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv), output, key);
+                tmp_iv = *reinterpret_cast<uint64_t*>(output);
+                auto tmp_out = reinterpret_cast<uint64_t*>(output);
+                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
+                *tmp_out ^= *tmp_text;
+
+
+                for (uint64_t i = 0; i < block_count; ++i)
+                {
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                                       output + (i + 1) * block_size, key);
+                    tmp_iv = *reinterpret_cast<uint64_t*>(output + (i + 1) * block_size);
+                    tmp_text = reinterpret_cast<uint64_t*>(data + i * block_size);
+                    tmp_out = reinterpret_cast<uint64_t*>(output + (i + 1) * block_size);
+                    *tmp_out ^= *tmp_text;
+                }
+
+                if (rest != 0) {
+                    uint8_t last_block[block_size];
+                    paddingLastBlock(data, size, last_block);
+
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                        output + (block_count + 1) * block_size, key);
+                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
+                    tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 1) * block_size);
+                    *tmp_out ^= *tmp_text;
+                }
+
+                return output;
             }
         case Mode::CTR:
             {
@@ -483,7 +521,44 @@ public:
             }
         case Mode::OFB:
             {
-                break;
+                uint64_t block_count = size / block_size;
+                uint8_t service_block[block_size] = {0};
+
+                algorithm->encrypt(iv, service_block, key);
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(service_block);
+                auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
+                auto tmp_text = reinterpret_cast<uint64_t*>(data);
+                *tmp_out ^= *tmp_text;
+
+                const uint64_t rest = service_block[0];
+                block_count -= 1 + (rest != 0);
+
+                output_len = block_count * block_size + rest;
+                auto output = new uint8_t[output_len]();
+
+                for (uint64_t i = 0; i < block_count; ++i)
+                {
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                                       output + i * block_size, key);
+                    tmp_iv = *reinterpret_cast<uint64_t*>(output + i * block_size);
+                    tmp_text = reinterpret_cast<uint64_t*>(data + (i + 1) * block_size);
+                    tmp_out = reinterpret_cast<uint64_t*>(output + i * block_size);
+                    *tmp_out ^= *tmp_text;
+                }
+
+                if (rest) {
+                    uint8_t last_block[block_size] = {0};
+
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                        last_block, key);
+                    tmp_text = reinterpret_cast<uint64_t*>(data + (block_count + 1) * block_size);
+                    tmp_out = reinterpret_cast<uint64_t*>(last_block);
+                    *tmp_out ^= *tmp_text;
+
+                    unpaddingLastBlock(last_block, rest, output + block_count * block_size);
+                }
+
+                return output;
             }
         case Mode::CTR:
             {
