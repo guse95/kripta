@@ -104,16 +104,21 @@ public:
 
     uint8_t* encrypt(uint8_t* data, const uint64_t size, uint64_t& output_len)
     {
+        uint64_t block_count = size / block_size;
+        const uint64_t rest = size % block_size;
+
+        output_len = (block_count + 1 + (rest != 0)) * block_size;
+        auto output = new uint8_t[output_len]();
+
+        uint8_t service_block[block_size] = {0};
+        service_block[0] = rest;
+
         switch (mode)
         {
         case Mode::ECB:
             {
                 //потоки
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
+                algorithm->encrypt(service_block, output + (block_count + 1) * block_size, key);
 
                 std::vector<std::thread> threads;
                 const int num_of_threads = std::any_cast<int>(additional[0]);
@@ -132,26 +137,12 @@ public:
                     uint8_t last_block[block_size];
                     paddingLastBlock(data, size, last_block);
                     algorithm->encrypt(last_block, output + block_count * block_size, key);
-                    ++block_count;
                 }
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
-                algorithm->encrypt(service_block, output + block_count * block_size, key);
 
                 return output;
             }
         case Mode::CBC:
             {
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
-
                 auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
                 *tmp_text ^= *tmp_iv;
@@ -180,15 +171,6 @@ public:
             }
         case Mode::PCBC:
             {
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
-
                 auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
                 uint64_t tmp_prev_text = *tmp_text;
@@ -224,15 +206,6 @@ public:
             }
         case Mode::CFB:
             {
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
-
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(iv);
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv), output, key);
                 auto tmp_out = reinterpret_cast<uint64_t*>(output);
@@ -263,15 +236,6 @@ public:
             }
         case Mode::OFB: // нет смысла в параллельности
             {
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
-
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(iv);
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv), output, key);
                 tmp_iv = *reinterpret_cast<uint64_t*>(output);
@@ -305,14 +269,6 @@ public:
             }
         case Mode::CTR:
             {
-                uint64_t block_count = size / block_size;
-                const uint64_t rest = size % block_size;
-
-                output_len = (block_count + 1 + (rest != 0)) * block_size;
-                auto output = new uint8_t[output_len]();
-
-                uint8_t service_block[block_size] = {0};
-                service_block[0] = rest;
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(iv) + block_count + 1;
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
                     output + (block_count + 1) * block_size, key);
@@ -374,13 +330,14 @@ public:
 
     uint8_t* decrypt(uint8_t* data, const uint64_t size, uint64_t& output_len) const
     {
+        uint64_t block_count = size / block_size;
+        uint8_t service_block[block_size] = {0};
+
         switch (mode)
         {
         case Mode::ECB:
             {
                 //потоки
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
                 algorithm->decrypt(data + (block_count - 1) * block_size, service_block, key);
 
                 const uint64_t rest = service_block[0];
@@ -422,9 +379,6 @@ public:
             }
         case Mode::CBC:
             {
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
-
                 algorithm->decrypt(data, service_block, key);
                 auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
@@ -476,9 +430,6 @@ public:
             }
         case Mode::PCBC:
             {
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
-
                 algorithm->decrypt(data, service_block, key);
                 auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
@@ -519,9 +470,6 @@ public:
             }
         case Mode::CFB:
             {
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
-
                 algorithm->encrypt(iv, service_block, key);
                 auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
                 auto tmp_text = reinterpret_cast<uint64_t*>(data);
@@ -574,9 +522,6 @@ public:
             }
         case Mode::OFB:
             {
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
-
                 algorithm->encrypt(iv, service_block, key);
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(service_block);
                 auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
@@ -615,9 +560,6 @@ public:
             }
         case Mode::CTR:
             {
-                uint64_t block_count = size / block_size;
-                uint8_t service_block[block_size] = {0};
-
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + block_count - 1;
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
                                     service_block, key);
