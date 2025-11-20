@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <random>
 #include <thread>
 
 #include "P_Block.h"
@@ -19,19 +20,19 @@ class   CipherContext
     uint8_t* key;
     Mode mode;
     Padding padding;
-
+    const uint64_t block_size;
     uint8_t* iv = nullptr;
     std::vector<std::any> additional = {};
 
 public:
-    const uint64_t block_size = 8;
 
     CipherContext(ISymmetricCypher* _algorithm,
                   uint8_t* _key,
                   Mode _mode, Padding _padding,
+                  uint64_t _block_size,
                   uint8_t* _iv = nullptr,
                   std::initializer_list<std::any> _additional = {}) :
-        algorithm(_algorithm), key(_key), mode(_mode), padding(_padding), iv(_iv), additional(_additional)
+        algorithm(_algorithm), key(_key), mode(_mode), padding(_padding), block_size(_block_size), iv(_iv), additional(_additional)
     {
         //TODO: обработка дополнительных параметров
         if (mode == Mode::ECB || mode == Mode::CBC)
@@ -102,12 +103,44 @@ public:
         printf("encrypting end %lu\n", ind_thread);
     }
 
-    uint8_t* encrypt(uint8_t* data, const uint64_t size, uint64_t& output_len)
+    static void thread_delta_encr(const CipherContext* context, uint8_t* data, uint8_t* output, const uint8_t* iv,
+        const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, const uint32_t delta)
+    {
+        for (uint64_t j = 0; j * num_of_threads + ind_thread < num_of_blocks; ++j)
+        {
+            const uint64_t ind_of_block = j * num_of_threads + ind_thread;
+
+            auto tmp_iv = *(uint64_t*)(iv) + ind_of_block * delta;
+            context->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                output + ind_of_block * context->block_size, context->key);
+            auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
+            auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
+            *tmp_out ^= *tmp_text;
+        }
+    }
+
+    static void thread_delta_decr(const CipherContext* context, uint8_t* data, uint8_t* output, const uint8_t* iv,
+        const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, const uint32_t delta)
+    {
+        for (uint64_t j = 0; j * num_of_threads + ind_thread < num_of_blocks; ++j)
+        {
+            const uint64_t ind_of_block = j * num_of_threads + ind_thread;
+
+            auto tmp_iv = *(uint64_t*)(iv) + ind_of_block * delta;
+            context->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                output + ind_of_block * context->block_size, context->key);
+            auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
+            auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
+            *tmp_out ^= *tmp_text;
+        }
+    }
+
+    uint8_t* encrypt(uint8_t* data, const uint64_t size, uint64_t& output_len) const
     {
         uint64_t block_count = size / block_size;
         const uint64_t rest = size % block_size;
 
-        output_len = (block_count + 1 + (rest != 0)) * block_size;
+        output_len = (block_count + 1 + (rest != 0) + (mode == Mode::RandomDelta)) * block_size;
         auto output = new uint8_t[output_len]();
 
         uint8_t service_block[block_size] = {0};
@@ -281,21 +314,8 @@ public:
 
                 for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                    threads.emplace_back(
-                        [this, data, i, num_of_threads, block_count, output]
-                        {
-                            for (uint64_t j = 0; j * num_of_threads + i < block_count; ++j)
-                            {
-                                const uint64_t ind_of_block = j * num_of_threads + i;
-
-                                auto tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + ind_of_block;
-                                this->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                                    output + ind_of_block * this->block_size, this->key);
-                                auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * this->block_size);
-                                auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * this->block_size);
-                                *tmp_out ^= *tmp_text;
-                            }
-                        });
+                    threads.emplace_back(thread_delta_encr, this, data, output, iv,
+                        i, num_of_threads, block_count, 1);
                 }
                 for (auto& t : threads)
                 {
@@ -318,11 +338,56 @@ public:
             }
         case Mode::RandomDelta:
             {
-                break;
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<uint8_t> dist(0, 255);
+
+                uint8_t rnd_iv[block_size];
+
+                for (size_t i = 0; i < block_size; ++i) {
+                    rnd_iv[i] = dist(gen);
+                }
+                uint32_t delta = *reinterpret_cast<uint32_t*>(rnd_iv);
+
+                algorithm->encrypt(rnd_iv, output, key);
+
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + (block_count + 1) * delta;
+                algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                    output + (block_count + 2) * block_size, key);
+                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
+                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 2) * block_size);
+                *tmp_out ^= *tmp_text;
+
+                std::vector<std::thread> threads;
+                const int num_of_threads = std::any_cast<int>(additional[0]);
+
+                for (uint64_t i = 0; i < num_of_threads; i++)
+                {
+                    threads.emplace_back(thread_delta_encr, this, data, output + block_size, static_cast<uint8_t*>(rnd_iv),
+                        i, num_of_threads, block_count, delta);
+                }
+                for (auto& t : threads)
+                {
+                    t.join();
+                }
+
+                if (rest != 0) {
+                    uint8_t last_block[block_size];
+                    paddingLastBlock(data, size, last_block);
+
+                    tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + block_count * delta;
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                                    output + (block_count + 1) * block_size, key);
+                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
+                    tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 1) * block_size);
+                    *tmp_out ^= *tmp_text;
+                }
+
+                return output;
             }
 
         default:
-            printf("Something went wrong (decryption)");
+            printf("Something went wrong (encryption)");
             break;
         }
         return nullptr;
@@ -578,21 +643,8 @@ public:
 
                 for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                    threads.emplace_back(
-                        [this, data, i, num_of_threads, block_count, output]
-                        {
-                            for (uint64_t j = 0; j * num_of_threads + i < block_count; ++j)
-                            {
-                                const uint64_t ind_of_block = j * num_of_threads + i;
-
-                                auto tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + ind_of_block;
-                                this->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                                    output + ind_of_block * this->block_size, this->key);
-                                auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * this->block_size);
-                                auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * this->block_size);
-                                *tmp_out ^= *tmp_text;
-                            }
-                        });
+                    threads.emplace_back(thread_delta_decr, this, data, output, iv,
+                        i, num_of_threads, block_count, 1);
                 }
                 for (auto& t : threads)
                 {
@@ -616,7 +668,52 @@ public:
             }
         case Mode::RandomDelta:
             {
-                break;
+                uint8_t rnd_iv[block_size] = {0};
+                algorithm->decrypt(data, rnd_iv, key);
+
+                uint32_t delta = *reinterpret_cast<uint32_t*>(rnd_iv);
+                --block_count;
+
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + (block_count - 1) * delta;
+                algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                                    service_block, key);
+                auto tmp_text = reinterpret_cast<uint64_t*>(data + block_count * block_size);
+                auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
+                *tmp_out ^= *tmp_text;
+
+                const uint64_t rest = service_block[0];
+                block_count -= 1 + (rest != 0);
+
+                output_len = block_count * block_size + rest;
+                auto output = new uint8_t[output_len]();
+
+                std::vector<std::thread> threads;
+                const int num_of_threads = std::any_cast<int>(additional[0]);
+
+                for (uint64_t i = 0; i < num_of_threads; i++)
+                {
+                    threads.emplace_back(thread_delta_decr, this, data + block_size, output, static_cast<uint8_t*>(rnd_iv),
+                        i, num_of_threads, block_count, delta);
+                }
+                for (auto& t : threads)
+                {
+                    t.join();
+                }
+
+                if (rest != 0) {
+                    uint8_t last_block[block_size] = {0};
+
+                    tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + block_count * delta;
+                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+                                    last_block, key);
+                    tmp_text = reinterpret_cast<uint64_t*>(data + (block_count + 1) * block_size);
+                    tmp_out = reinterpret_cast<uint64_t*>(last_block);
+                    *tmp_out ^= *tmp_text;
+
+                    unpaddingLastBlock(last_block, rest, output + block_count * block_size);
+                }
+
+                return output;
             }
 
         default:
