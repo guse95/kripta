@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <fstream>
 #include <random>
 #include <thread>
 
@@ -52,28 +53,28 @@ public:
 
         switch (padding)
         {
-            case Padding::ZEROS:
+        case Padding::ZEROS:
+            {
+                break;
+            }
+        case Padding::PKCS7:
+            {
+                for (auto i = rest; i < block_size; i++)
                 {
-                    break;
+                    last_block[i] = block_size - rest;
                 }
-            case Padding::PKCS7:
-                {
-                    for (auto i = rest; i < block_size; i++)
-                    {
-                        last_block[i] = block_size - rest;
-                    }
-                    break;
-                }
-            case Padding::ANSI_X923:
-                {
-                    last_block[block_size - 1] = block_size - rest;
-                    break;
-                }
-            case Padding::ISO10126:
-                {
-                    last_block[block_size - 1] = block_size - rest;
-                    break;
-                }
+                break;
+            }
+        case Padding::ANSI_X923:
+            {
+                last_block[block_size - 1] = block_size - rest;
+                break;
+            }
+        case Padding::ISO10126:
+            {
+                last_block[block_size - 1] = block_size - rest;
+                break;
+            }
         default:
             printf("Something went wrong (padding last block)");
             break;
@@ -100,7 +101,6 @@ public:
             context->algorithm->encrypt(data + ind_of_block * context->block_size,
                                output + ind_of_block * context->block_size, context->key);
         }
-        printf("encrypting end %lu\n", ind_thread);
     }
 
     static void thread_delta_encr(const CipherContext* context, uint8_t* data, uint8_t* output, const uint8_t* iv,
@@ -137,21 +137,29 @@ public:
 
     uint8_t* encrypt(uint8_t* data, const uint64_t size, uint64_t& output_len) const
     {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<uint8_t> dist(0, 255);
+
         uint64_t block_count = size / block_size;
         const uint64_t rest = size % block_size;
 
         output_len = (block_count + 1 + (rest != 0) + (mode == Mode::RandomDelta)) * block_size;
         auto output = new uint8_t[output_len]();
 
-        uint8_t service_block[block_size] = {0};
+        uint8_t service_block[block_size];
         service_block[0] = rest;
+
+        for (int i = 1; i < block_size; i++)
+        {
+            service_block[i] = dist(gen);
+        }
 
         switch (mode)
         {
         case Mode::ECB:
             {
-                //потоки
-                algorithm->encrypt(service_block, output + (block_count + 1) * block_size, key);
+                algorithm->encrypt(service_block, output + (block_count + (rest != 0)) * block_size, key);
 
                 std::vector<std::thread> threads;
                 const int num_of_threads = std::any_cast<int>(additional[0]);
@@ -302,11 +310,11 @@ public:
             }
         case Mode::CTR:
             {
-                auto tmp_iv = *reinterpret_cast<uint64_t*>(iv) + block_count + 1;
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(iv) + block_count + (rest != 0);
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                    output + (block_count + 1) * block_size, key);
+                    output + (block_count + (rest != 0)) * block_size, key);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
-                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 1) * block_size);
+                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + (rest != 0)) * block_size);
                 *tmp_out ^= *tmp_text;
 
                 std::vector<std::thread> threads;
@@ -338,10 +346,6 @@ public:
             }
         case Mode::RandomDelta:
             {
-                std::random_device rd;
-                std::mt19937 gen(rd());
-                std::uniform_int_distribution<uint8_t> dist(0, 255);
-
                 uint8_t rnd_iv[block_size];
 
                 for (size_t i = 0; i < block_size; ++i) {
@@ -351,11 +355,11 @@ public:
 
                 algorithm->encrypt(rnd_iv, output, key);
 
-                auto tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + (block_count + 1) * delta;
+                auto tmp_iv = *reinterpret_cast<uint64_t*>(rnd_iv) + (block_count + (rest != 0)) * delta;
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                    output + (block_count + 2) * block_size, key);
+                    output + (block_count + 1 + (rest != 0)) * block_size, key);
                 auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
-                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 2) * block_size);
+                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + 1 + (rest != 0)) * block_size);
                 *tmp_out ^= *tmp_text;
 
                 std::vector<std::thread> threads;
@@ -416,17 +420,16 @@ public:
 
                 for (uint64_t i = 0; i < num_of_threads; i++)
                 {
-                threads.emplace_back([this, data, i, num_of_threads, block_count, output]
-                    {
-                    for (uint64_t j = 0; j * num_of_threads + i < block_count; ++j)
-                    {
-                        uint64_t ind_of_block = j * num_of_threads + i;
+                    threads.emplace_back([this, data, i, num_of_threads, block_count, output]
+                        {
+                        for (uint64_t j = 0; j * num_of_threads + i < block_count; ++j)
+                        {
+                            uint64_t ind_of_block = j * num_of_threads + i;
 
-                        this->algorithm->decrypt(data + ind_of_block * this->block_size,
-                                           output + ind_of_block * this->block_size, this->key);
-                    }
-                    printf("decrypting end %lu\n", i);
-                    });
+                            this->algorithm->decrypt(data + ind_of_block * this->block_size,
+                                               output + ind_of_block * this->block_size, this->key);
+                        }
+                        });
                 }
                 for (auto& t : threads)
                 {
@@ -473,7 +476,6 @@ public:
                             const auto tmp_text_loc = reinterpret_cast<uint64_t*>(output + ind_of_block * this->block_size);
                             *tmp_text_loc = (*tmp_text_loc) ^ (*tmp_iv_loc);
                         }
-                        printf("decrypting end %lu\n", i);
                         });
                 }
                 for (auto& t : threads)
@@ -563,7 +565,6 @@ public:
                             auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * this->block_size);
                             *tmp_out ^= *tmp_text;
                         }
-                        printf("decrypting end %lu\n", i);
                         });
                 }
                 for (auto& t : threads)
@@ -723,6 +724,84 @@ public:
         return nullptr;
     }
 
-    void encrypt(uint8_t* data, const std::string& outputPath);
-    void decrypt(uint8_t* data, const std::string& outputPath);
+    void encrypt(const std::string& inputPath, const std::string& outputPath) const
+    {
+        if (inputPath == outputPath)
+        {
+            std::cout << "The input file shouldn`t match the output file." << std::endl;
+            return;
+        }
+
+        std::ifstream in(inputPath, std::ios::binary);
+        std::ofstream out(outputPath, std::ios::binary);
+
+        if (!in.is_open()) {
+            std::cout << "File opening error: " << inputPath << std::endl;
+            return;
+        }
+        if (!out.is_open()) {
+            std::cout << "File opening error: " << outputPath << std::endl;
+            in.close();
+            return;
+        }
+
+        constexpr size_t BLOCK_SIZE = 16384;
+        uint8_t buffer[BLOCK_SIZE];
+
+        while (in) {
+            in.read(reinterpret_cast<char*>(buffer), BLOCK_SIZE);
+            std::streamsize bytes_read = in.gcount();
+
+            if (bytes_read > 0) {
+                uint64_t out_len = 0;
+                uint8_t* enc = encrypt(buffer, bytes_read, out_len);
+
+                out.write(reinterpret_cast<char*>(enc), out_len);
+                delete enc;
+            }
+        }
+        in.close();
+        out.close();
+    }
+    void decrypt(const std::string& inputPath, const std::string& outputPath) const
+    {
+        if (inputPath == outputPath)
+        {
+            std::cout << "The input file shouldn`t match the output file." << std::endl;
+            return;
+        }
+
+        std::ifstream in(inputPath, std::ios::binary);
+        std::ofstream out(outputPath, std::ios::binary);
+
+        if (!in.is_open()) {
+            std::cout << "File opening error: " << inputPath << std::endl;
+            return;
+        }
+        if (!out.is_open()) {
+            std::cout << "File opening error: " << outputPath << std::endl;
+            in.close();
+            return;
+        }
+
+
+        const size_t BLOCK_SIZE = 16384 + block_size * (1 + (mode == Mode::RandomDelta));
+        uint8_t buffer[BLOCK_SIZE];
+
+        while (in) {
+            in.read(reinterpret_cast<char*>(buffer), BLOCK_SIZE);
+            std::streamsize bytes_read = in.gcount();
+
+            if (bytes_read > 0) {
+                size_t out_len = 0;
+                uint8_t* dec = decrypt(buffer, bytes_read, out_len);
+
+                out.write(reinterpret_cast<char*>(dec), out_len);
+                delete dec;
+            }
+        }
+
+        in.close();
+        out.close();
+    }
 };

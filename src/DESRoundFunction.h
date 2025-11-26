@@ -88,7 +88,6 @@ class DESRoundFunction : public IRoundFunction
         uint32_t tmp_res = 0;
         for (int i = 0; i < 8; i++)
         {
-            //ALARM убрал сдвиг на 16
             const auto row_ind = ((*tmp_text & (32u << (6 * i))) >> (6 * i + 4)) |
                 ((*tmp_text & (1u << (6 * i))) >> (6 * i)); // 100001
             const auto col_ind = (*tmp_text & (30u << (6 * i))) >> (6 * i + 1); // 011110

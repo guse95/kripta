@@ -31,7 +31,7 @@ const int PC_2[] = {
 
 class DESKeyExpansion : public IKeyExpansion
 {
-    void expandKey(const uint8_t* key, uint8_t* new_keys) override
+    void expandKey(const uint8_t* key, uint8_t* new_keys, uint32_t key_len) override
     {
         uint8_t tmp_c[4] = {0};
         uint8_t tmp_d[4] = {0};

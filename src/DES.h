@@ -33,7 +33,7 @@ class DES : public ISymmetricCypher
     FeistelNet net;
 public:
 
-    DES() : net(FeistelNet(new DESKeyExpansion(), new DESRoundFunction())) {}
+    DES() : net(FeistelNet(new DESKeyExpansion(), new DESRoundFunction(), 64, 8)) {}
     ~DES() override = default;
 
     void encrypt(uint8_t* text, uint8_t* encrText, uint8_t* key) override
