@@ -17,13 +17,17 @@ public:
 
     void encrypt(uint8_t* text, uint8_t* encrText, uint8_t* key) override
     {
-        memcpy(encrText, text, 16);
+        if (text != encrText){
+            memcpy(encrText, text, 16);
+        }
         net.encryptBlock(encrText, key);
     }
 
     void decrypt(uint8_t* text, uint8_t* decrText, uint8_t* key) override
     {
-        memcpy(decrText, text, 16);
+        if (text != decrText) {
+            memcpy(decrText, text, 16);
+        }
         net.decryptBlock(decrText, key);
     }
 };
