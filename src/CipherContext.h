@@ -123,32 +123,46 @@ public:
     static void thread_delta_encr(const CipherContext* context, uint8_t* data, uint8_t* output, const uint8_t* iv,
         const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, const uint32_t delta)
     {
+        uint8_t tmp_iv[context->block_size];
+        memcpy(tmp_iv + sizeof(uint64_t),
+            iv + sizeof(uint64_t), context->block_size - sizeof(uint64_t));
+
         for (uint64_t j = 0; j * num_of_threads + ind_thread < num_of_blocks; ++j)
         {
             const uint64_t ind_of_block = j * num_of_threads + ind_thread;
 
-            auto tmp_iv = *(uint64_t*)(iv) + ind_of_block * delta;
-            context->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+            *reinterpret_cast<uint64_t*>(tmp_iv) = *(uint64_t*)(iv) + ind_of_block * delta;
+            context->algorithm->encrypt(tmp_iv,
                 output + ind_of_block * context->block_size, context->key);
-            auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
-            auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
-            *tmp_out ^= *tmp_text;
+            // auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
+            // auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
+            // *tmp_out ^= *tmp_text;
+            XOR(output + ind_of_block * context->block_size,
+                output + ind_of_block * context->block_size,
+                data + ind_of_block * context->block_size, context->block_size);
         }
     }
 
     static void thread_delta_decr(const CipherContext* context, uint8_t* data, uint8_t* output, const uint8_t* iv,
         const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, const uint32_t delta)
     {
+        uint8_t tmp_iv[context->block_size];
+        memcpy(tmp_iv + sizeof(uint64_t),
+            iv + sizeof(uint64_t), context->block_size - sizeof(uint64_t));
+
         for (uint64_t j = 0; j * num_of_threads + ind_thread < num_of_blocks; ++j)
         {
             const uint64_t ind_of_block = j * num_of_threads + ind_thread;
 
-            auto tmp_iv = *(uint64_t*)(iv) + ind_of_block * delta;
-            context->algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
+            *reinterpret_cast<uint64_t*>(tmp_iv) = *(uint64_t*)(iv) + ind_of_block * delta;
+            context->algorithm->encrypt(tmp_iv,
                 output + ind_of_block * context->block_size, context->key);
-            auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
-            auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
-            *tmp_out ^= *tmp_text;
+            // auto tmp_text = reinterpret_cast<uint64_t*>(data + ind_of_block * context->block_size);
+            // auto tmp_out = reinterpret_cast<uint64_t*>(output + ind_of_block * context->block_size);
+            // *tmp_out ^= *tmp_text;
+            XOR(output + ind_of_block * context->block_size,
+                output + ind_of_block * context->block_size,
+                data + ind_of_block * context->block_size, context->block_size);
         }
     }
 
@@ -315,12 +329,19 @@ public:
             }
         case Mode::CTR:
             {
-                auto tmp_iv = *reinterpret_cast<uint64_t*>(iv) + block_count + (rest != 0);
-                algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                    output + (block_count + (rest != 0)) * block_size, key);
-                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
-                auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + (rest != 0)) * block_size);
-                *tmp_out ^= *tmp_text;
+                uint8_t tmp_iv[block_size];
+                *reinterpret_cast<uint64_t*>(tmp_iv) = *reinterpret_cast<uint64_t*>(iv) + block_count + (rest != 0);
+                memcpy(tmp_iv + sizeof(uint64_t), iv + sizeof(uint64_t), block_size - sizeof(uint64_t));
+
+                algorithm->encrypt(tmp_iv, output + (block_count + (rest != 0)) * block_size, key);
+
+                // auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
+                // auto tmp_out = reinterpret_cast<uint64_t*>(output + (block_count + (rest != 0)) * block_size);
+                // *tmp_out ^= *tmp_text;
+
+                XOR(output + (block_count + (rest != 0)) * block_size,
+                    output + (block_count + (rest != 0)) * block_size,
+                    service_block, block_size);
 
                 std::vector<std::thread> threads;
                 const int num_of_threads = std::any_cast<int>(additional[0]);
@@ -339,12 +360,14 @@ public:
                     uint8_t last_block[block_size] = {0};
                     paddingLastBlock(data, size, last_block);
 
-                    tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + block_count;
-                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                                    output + block_count * block_size, key);
-                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
-                    tmp_out = reinterpret_cast<uint64_t*>(output + block_count * block_size);
-                    *tmp_out ^= *tmp_text;
+                    *reinterpret_cast<uint64_t*>(tmp_iv) = *reinterpret_cast<uint64_t*>(this->iv) + block_count;
+                    algorithm->encrypt(tmp_iv, output + block_count * block_size, key);
+                    // tmp_text = reinterpret_cast<uint64_t*>(last_block);
+                    // tmp_out = reinterpret_cast<uint64_t*>(output + block_count * block_size);
+                    // *tmp_out ^= *tmp_text;
+
+                    XOR(output + block_count * block_size,
+                        output + block_count * block_size, last_block, block_size);
                 }
 
                 return output;
@@ -632,12 +655,16 @@ public:
             }
         case Mode::CTR:
             {
-                auto tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + block_count - 1;
-                algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                                    service_block, key);
-                auto tmp_text = reinterpret_cast<uint64_t*>(data + (block_count - 1) * block_size);
-                auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
-                *tmp_out ^= *tmp_text;
+                uint8_t tmp_iv[block_size];
+                memcpy(tmp_iv + sizeof(uint64_t), iv + sizeof(uint64_t), block_size - sizeof(uint64_t));
+                *reinterpret_cast<uint64_t*>(tmp_iv) = *reinterpret_cast<uint64_t*>(this->iv) + block_count - 1;
+
+                algorithm->encrypt(tmp_iv, service_block, key);
+                // auto tmp_text = reinterpret_cast<uint64_t*>(data + (block_count - 1) * block_size);
+                // auto tmp_out = reinterpret_cast<uint64_t*>(service_block);
+                // *tmp_out ^= *tmp_text;
+                XOR(service_block, service_block,
+                    data + (block_count - 1) * block_size, block_size);
 
                 const uint64_t rest = service_block[0];
                 block_count -= 1 + (rest != 0);
@@ -661,12 +688,13 @@ public:
                 if (rest != 0) {
                     uint8_t last_block[block_size] = {0};
 
-                    tmp_iv = *reinterpret_cast<uint64_t*>(this->iv) + block_count;
-                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv),
-                                    last_block, key);
-                    tmp_text = reinterpret_cast<uint64_t*>(data + block_count * block_size);
-                    tmp_out = reinterpret_cast<uint64_t*>(last_block);
-                    *tmp_out ^= *tmp_text;
+                    *reinterpret_cast<uint64_t*>(tmp_iv) = *reinterpret_cast<uint64_t*>(this->iv) + block_count;
+                    algorithm->encrypt(tmp_iv, last_block, key);
+                    // tmp_text = reinterpret_cast<uint64_t*>(data + block_count * block_size);
+                    // tmp_out = reinterpret_cast<uint64_t*>(last_block);
+                    // *tmp_out ^= *tmp_text;
+                    XOR(last_block, last_block,
+                        data + block_count * block_size, block_size);
 
                     unpaddingLastBlock(last_block, rest, output + block_count * block_size);
                 }
@@ -763,7 +791,7 @@ public:
                 uint8_t* enc = encrypt(buffer, bytes_read, out_len);
 
                 out.write(reinterpret_cast<char*>(enc), out_len);
-                delete enc;
+                delete[] enc;
             }
         }
         in.close();
@@ -803,7 +831,7 @@ public:
                 uint8_t* dec = decrypt(buffer, bytes_read, out_len);
 
                 out.write(reinterpret_cast<char*>(dec), out_len);
-                delete dec;
+                delete[] dec;
             }
         }
 
