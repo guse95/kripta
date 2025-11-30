@@ -34,27 +34,6 @@ public:
 
     void encryptBlock(uint8_t* text, const uint8_t* key) const
     {
-        // auto* keys = new uint8_t[round_key_size * rounds](); // 16 x 6 bytes
-        // keyExpansion->expandKey(key, keys, key_size);
-        //
-        // auto l = *reinterpret_cast<uint64_t*>(text);
-        // auto r = *reinterpret_cast<uint64_t*>(text + block_size / 2);
-        //
-        // for (size_t i = 0; i < rounds; ++i)
-        // {
-        //     const auto tmp = r;
-        //     uint64_t FunRes = 0;
-        //     roundFunction->roundFun(reinterpret_cast<uint8_t*>(&r),
-        //         reinterpret_cast<uint8_t*>(&FunRes), (keys + i * round_key_size));
-        //
-        //     r = l ^ FunRes;
-        //     l = tmp;
-        //
-        // }
-        // // const auto tmp = reinterpret_cast<uint64_t*>(text);
-        // // *tmp = (*tmp << 32) | (*tmp >> 32); //TODO: поменять на скока двигать
-        // delete[] keys;
-
         auto* keys = new uint8_t[round_key_size * rounds]();
         keyExpansion->expandKey(key, keys, key_size);
 
@@ -63,14 +42,14 @@ public:
 
         for (size_t i = 0; i < rounds; i++) {
 
-            uint64_t round_F_result = 0;
-            auto* r_ptr = reinterpret_cast<uint8_t*>(&r);
-            roundFunction->roundFun(r_ptr, reinterpret_cast<uint8_t*>(&round_F_result),
+            uint64_t F = 0;
+            auto* tmp = reinterpret_cast<uint8_t*>(&r);
+            roundFunction->roundFun(tmp, reinterpret_cast<uint8_t*>(&F),
                 keys + i * round_key_size);
-            uint64_t xor_result = round_F_result ^ l;
+            uint64_t XOR = F ^ l;
 
             l = r;
-            r = xor_result;
+            r = XOR;
         }
         memcpy(text, &r, block_size / 2);
         memcpy(text + block_size / 2, &l, block_size / 2);
@@ -80,33 +59,6 @@ public:
 
     void decryptBlock(uint8_t* text, const uint8_t* key) const
     {
-        // auto* keys = new uint8_t[round_key_size * rounds](); // 16 x 48 bit
-        // keyExpansion->expandKey(key, keys, key_size);
-        //
-        // auto l = *reinterpret_cast<uint64_t*>(text);
-        // auto r = *reinterpret_cast<uint64_t*>(text + block_size / 2);
-        // for (size_t i = 0; i < rounds; ++i)
-        // {
-        //     const auto tmp = r;
-        //     uint64_t FunRes = 0;
-        //     roundFunction->roundFun(reinterpret_cast<uint8_t*>(&r),
-        //         reinterpret_cast<uint8_t*>(&FunRes), (keys + (rounds - 1 - i) * round_key_size));
-        //
-        //
-        //     // uint64_t XOR = *l ^ FunRes;
-        //     // *l = *r;
-        //     // *r = XOR;
-        //     r = l ^ FunRes;
-        //     l = tmp;
-        // }
-        // // const auto tmp = reinterpret_cast<uint64_t*>(text);
-        // // *tmp = (*tmp << 32) | (*tmp >> 32);
-        //
-        // delete[] keys;
-
-
-
-
         auto* keys = new uint8_t[round_key_size * rounds]();
         keyExpansion->expandKey(key, keys, key_size);
 
@@ -114,15 +66,15 @@ public:
         uint64_t r = (*reinterpret_cast<uint64_t*>(text + (block_size / 2)));
 
         for (size_t i = 0; i < rounds; i++) {
-            uint64_t round_F_result = 0;
+            uint64_t F = 0;
 
-            auto* r_ptr = reinterpret_cast<uint8_t*>(&r);
-            roundFunction->roundFun(r_ptr, reinterpret_cast<uint8_t*>(&round_F_result),
+            auto* tmp = reinterpret_cast<uint8_t*>(&r);
+            roundFunction->roundFun(tmp, reinterpret_cast<uint8_t*>(&F),
                 keys + (rounds - i - 1) * round_key_size);
-            uint64_t xor_result = round_F_result ^ l;
+            uint64_t XOR = F ^ l;
 
             l = r;
-            r = xor_result;
+            r = XOR;
         }
         memcpy(text, &r, block_size / 2);
         memcpy(text + block_size / 2, &l, block_size / 2);

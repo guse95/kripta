@@ -49,11 +49,6 @@ class DEALKeyExpansion final : public IKeyExpansion
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 40, des_key);
         }
 
-        std::cout << "Round keys in KeyExp:\n";
-        for (int i = 0; i < 6; ++i)
-        {
-            std::cout << *(reinterpret_cast<uint64_t*>(new_keys) + i) << std::endl;
-        }
         delete des_encryptor;
     }
 };

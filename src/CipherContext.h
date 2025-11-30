@@ -91,6 +91,19 @@ public:
         memcpy(output, last_block, rest);
     }
 
+    static void XOR(uint8_t* res, const uint8_t* first, const uint8_t* second, const uint64_t block_size)
+    {
+        for (uint64_t i = 0; i < block_size; i++)
+        {
+            if (res == first) {
+                res[i] ^= second[i];
+            } else
+            {
+                res[i] = first[i] ^ second[i];
+            }
+        }
+    }
+
     static void threadEncr(const CipherContext* context, uint8_t* data,
         const uint64_t ind_thread, const uint64_t num_of_threads, const uint64_t num_of_blocks, uint8_t* output)
     {
@@ -212,38 +225,37 @@ public:
             }
         case Mode::PCBC:
             {
-                auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
-                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
-                uint64_t tmp_prev_text = *tmp_text;
-                *tmp_text ^= *tmp_iv;
-                algorithm->encrypt(service_block, output, key);
+                uint8_t tmp_text[block_size];
 
+                XOR(tmp_text, service_block, iv, block_size);
+
+                algorithm->encrypt(tmp_text, output, key);
 
                 for (uint64_t i = 0; i < block_count; ++i)
                 {
-                    tmp_text = reinterpret_cast<uint64_t*>(data + i * block_size);
-                    tmp_iv = reinterpret_cast<uint64_t*>(output + i * block_size);
+                    XOR(tmp_text, data + i * block_size, output + i * block_size, block_size); // m2 ^ c1
+                    if (i == 0)
+                    {
+                        XOR(tmp_text, tmp_text, service_block, block_size);
+                    } else
+                    {
+                        XOR(tmp_text, tmp_text, data + (i - 1) * block_size, block_size); // ^ m1
+                    }
 
-                    tmp_prev_text ^= *tmp_iv;
-                    tmp_prev_text ^= *tmp_text;
-                    algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_prev_text),
-                                       output + (i + 1) * block_size, key);
-                    tmp_prev_text = *tmp_text; // копирование блока ((
+                    algorithm->encrypt(tmp_text, output + (i + 1) * block_size, key);
                 }
 
                 if (rest != 0) {
                     uint8_t last_block[block_size];
                     paddingLastBlock(data, size, last_block);
-                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
-                    tmp_iv = reinterpret_cast<uint64_t*>(output + block_count * block_size);
 
-                    *tmp_text ^= *tmp_iv;
-                    *tmp_text ^= tmp_prev_text;
-                    algorithm->encrypt(last_block, output + (block_count + 1) * block_size, key);
+                    XOR(tmp_text, last_block, output + block_count * block_size, block_size);
+                    XOR(tmp_text, tmp_text, data + (block_count - 1) * block_size, block_size);
+
+                    algorithm->encrypt(tmp_text, output + (block_count + 1) * block_size, key);
                 }
 
                 return output;
-                break;
             }
         case Mode::CFB:
             {
@@ -275,7 +287,7 @@ public:
 
                 return output;
             }
-        case Mode::OFB: // нет смысла в параллельности
+        case Mode::OFB:
             {
                 auto tmp_iv = *reinterpret_cast<uint64_t*>(iv);
                 algorithm->encrypt(reinterpret_cast<uint8_t*>(&tmp_iv), output, key);
@@ -498,10 +510,8 @@ public:
         case Mode::PCBC:
             {
                 algorithm->decrypt(data, service_block, key);
-                auto tmp_iv = reinterpret_cast<uint64_t*>(iv);
-                auto tmp_text = reinterpret_cast<uint64_t*>(service_block);
-                *tmp_text ^= *tmp_iv;
-                auto tmp_prev_text = tmp_text;
+
+                XOR(service_block, service_block, iv, block_size);
 
                 const uint64_t rest = service_block[0];
                 block_count -= 1 + (rest != 0);
@@ -513,27 +523,31 @@ public:
                 {
                     algorithm->decrypt(data + (i + 1) * block_size,
                                        output + i * block_size, key);
-                    tmp_iv = reinterpret_cast<uint64_t*>(data + i * block_size);
-                    tmp_text = reinterpret_cast<uint64_t*>(output + i * block_size);
-                    *tmp_text ^= *tmp_iv;
-                    *tmp_text ^= *tmp_prev_text;
-                    tmp_prev_text = tmp_text;
+
+                    XOR(output + i * block_size, output + i * block_size,
+                        data + i * block_size, block_size); // m2 ^ c1
+                    if (i == 0)
+                    {
+                        XOR(output + i * block_size, output + i * block_size,
+                            service_block, block_size);
+                    } else
+                    {
+                        XOR(output + i * block_size, output + i * block_size,
+                            output + (i - 1) * block_size, block_size); // ^ m1
+                    }
                 }
 
                 if (rest) {
                     uint8_t last_block[block_size] = {0};
                     algorithm->decrypt(data + (block_count + 1) * block_size, last_block, key);
-                    tmp_iv = reinterpret_cast<uint64_t*>(data + block_count * block_size);
-                    tmp_text = reinterpret_cast<uint64_t*>(last_block);
-                    *tmp_text ^= *tmp_iv;
-                    *tmp_text ^= *tmp_prev_text;
-                    tmp_prev_text = tmp_text;
+
+                    XOR(last_block, last_block, data + block_count * block_size, block_size);
+                    XOR(last_block, last_block, output + (block_count - 1) * block_size, block_size);
 
                     unpaddingLastBlock(last_block, rest, output + block_count * block_size);
                 }
 
                 return output;
-                break;
             }
         case Mode::CFB:
             {
