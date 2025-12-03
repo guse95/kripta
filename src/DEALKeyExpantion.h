@@ -5,7 +5,7 @@
 
 
 uint64_t R = 0x0123456789ABCDEF;
-uint8_t iv[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t IV[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 
 class DEALKeyExpansion final : public IKeyExpansion
@@ -21,32 +21,83 @@ class DEALKeyExpansion final : public IKeyExpansion
         uint64_t t = 0;
 
         if (key_len == 128) {
-
-            t = *K_1 ^ *reinterpret_cast<uint64_t*>(iv);
+            t = *K_1 ^ *reinterpret_cast<uint64_t*>(IV);
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys, des_key);
 
             t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys);
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 8, des_key);
 
-            uint64_t i = 0;
-            i |= (1ULL << 63);
+            uint64_t i = (1ULL << 63);
             t = *K_1 ^ *reinterpret_cast<uint64_t*>(new_keys + 8) ^ i;
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 16, des_key);
 
-            i = 0;
-            i |= (1ULL << 62);
+            i = (1ULL << 62);
             t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys + 16) ^ i;
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 24, des_key);
 
-            i = 0;
-            i |= (1ULL << 60);
+            i = (1ULL << 60);
             t = *K_1 ^ *reinterpret_cast<uint64_t*>(new_keys + 24) ^ i;
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 32, des_key);
 
-            i = 0;
-            i |= (1ULL << 56);
+            i = (1ULL << 56);
             t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys + 32) ^ i;
             des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 40, des_key);
+        } else if (key_len == 192)
+        {
+            const auto K_3 = K_1 + 2;
+
+            t = *K_1 ^ *reinterpret_cast<uint64_t*>(IV);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys, des_key);
+
+            t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 8, des_key);
+
+            t = *K_3 ^ *reinterpret_cast<uint64_t*>(new_keys + 8);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 16, des_key);
+
+            uint64_t i = (1ULL << 63);
+            t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys + 16) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 24, des_key);
+
+            i = (1ULL << 62);
+            t = *K_1 ^ *reinterpret_cast<uint64_t*>(new_keys + 24) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 32, des_key);
+
+            i = (1ULL << 60);
+            t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys + 32) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 40, des_key);
+        } else if (key_len == 256)
+        {
+            const auto K_3 = K_1 + 2;
+            const auto K_4 = K_1 + 3;
+
+            t = *K_1 ^ *reinterpret_cast<uint64_t*>(IV);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys, des_key);
+
+            t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 8, des_key);
+
+            t = *K_3 ^ *reinterpret_cast<uint64_t*>(new_keys + 8);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 16, des_key);
+
+            t = *K_4 ^ *reinterpret_cast<uint64_t*>(new_keys + 16);
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 24, des_key);
+
+            uint64_t i = (1ULL << 63);
+            t = *K_1 ^ *reinterpret_cast<uint64_t*>(new_keys + 24) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 32, des_key);
+
+            i = (1ULL << 62);
+            t = *K_2 ^ *reinterpret_cast<uint64_t*>(new_keys + 32) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 40, des_key);
+
+            i = (1ULL << 60);
+            t = *K_3 ^ *reinterpret_cast<uint64_t*>(new_keys + 40) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 48, des_key);
+
+            i = (1ULL << 56);
+            t = *K_4 ^ *reinterpret_cast<uint64_t*>(new_keys + 48) ^ i;
+            des_encryptor->encrypt(reinterpret_cast<uint8_t*>(&t), new_keys + 56, des_key);
         }
 
         delete des_encryptor;
