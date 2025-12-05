@@ -1,7 +1,7 @@
 #pragma once
 
-#include "KeyExpansion.h"
-#include "P_Block.h"
+#include "../KeyExpansion.h"
+#include "../P_Block.h"
 
 const int PC_1[2][28] = {
     {

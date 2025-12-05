@@ -1,6 +1,6 @@
 #pragma once
 
-#include "KeyExpansion.h"
+#include "../KeyExpansion.h"
 #include "DES.h"
 
 

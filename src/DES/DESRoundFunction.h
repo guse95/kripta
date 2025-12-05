@@ -1,6 +1,6 @@
 #pragma once
-#include "KeyExpansion.h"
-#include "P_Block.h"
+#include "../KeyExpansion.h"
+#include "../P_Block.h"
 
 const int E_table[] = {
     32, 1, 2, 3, 4, 5,

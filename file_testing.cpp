@@ -1,8 +1,8 @@
 #include <iostream>
 
 #include "CipherContext.h"
-#include "DES.h"
-#include "DEAL.h"
+#include "DES/DES.h"
+#include "DEAL/DEAL.h"
 
 
 int main()
