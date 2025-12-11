@@ -85,12 +85,14 @@ ll ServiceGCD::Jacobi(ll a, ll p)
     if (a % 2 == 0)
     {
         ll tmp = a & (-a);
-        if (tmp % 2 == 0)
+        while (tmp > 1)
         {
             res *= sign_Jacobi(p);
-            a <<= tmp;
+            a >>= 1;
+            tmp >>= 1;
         }
+        return res * Jacobi(a, p);
     }
-    res *= Jacobi(p, a) * (((a - 1) / 2 % 2 == 0 || (p - 1) / 2 % 2 == 0) ? 1 : -1);
+    res *= Jacobi(p, a) * (((a - 1) % 4 == 0 || (p - 1) % 4 == 0) ? 1 : -1);
     return res;
 }

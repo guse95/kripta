@@ -73,5 +73,5 @@ int main()
     // delete[] decrtext;
 
     auto serv = ServiceGCD();
-    std::cout << "RESULT: " << serv.Jacobi(100, 383) << std::endl;
+    std::cout << "RESULT: " << serv.Jacobi(5, 21) << std::endl;
 }
