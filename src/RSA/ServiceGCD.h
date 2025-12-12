@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <iostream>
 
-using ll = long long;
+#include "my_BigInt.h"
 
 class ServiceGCD {
 
@@ -12,15 +12,15 @@ public:
     ServiceGCD() = default;
     ~ServiceGCD() = default;
 
-    static ll gcd(ll x, ll y);
+    static BigInt gcd(BigInt x, BigInt y);
 
-    static ll exp_gcd(ll a, ll b, ll &x, ll &y);
+    static BigInt exp_gcd(BigInt a, BigInt b, BigInt &x, BigInt &y);
 
-    static ll mod_pow(ll a, ll pow, ll mod);
+    static BigInt mod_pow(BigInt a, BigInt pow, BigInt mod);
 
-    static ll Legendre(ll a, ll p);
+    static BigInt Legendre(BigInt a, BigInt p);
 
-    static ll Jacobi(ll a, ll p);
+    static BigInt Jacobi(BigInt a, BigInt p);
 };
 
 

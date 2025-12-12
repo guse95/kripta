@@ -1,9 +1,9 @@
 #include "ServiceGCD.h"
 
 
-ll ServiceGCD::gcd(ll x, ll y)
+BigInt ServiceGCD::gcd(BigInt x, BigInt y)
 {
-    while (x)
+    while (x != BigInt(0))
     {
         if (x <= y)
         {
@@ -14,85 +14,65 @@ ll ServiceGCD::gcd(ll x, ll y)
     return y;
 }
 
-ll ServiceGCD::exp_gcd(ll a, ll b, ll &x, ll &y)
+BigInt ServiceGCD::exp_gcd(BigInt a, BigInt b, BigInt &x, BigInt &y)
 {
-    if (a == 0)
+    if (a == BigInt(0))
     {
-        x = 0;
-        y = 1;
+        x = BigInt(0);
+        y = BigInt(1);
         return b;
     }
-    ll x1, y1;
-    ll g = exp_gcd(b % a, a, x1, y1);
+    BigInt x1, y1;
+    BigInt g = exp_gcd(b % a, a, x1, y1);
     x = y1 - (b % a) * x1;
     y = x1;
     return g;
 }
 
-ll ServiceGCD::mod_pow(ll a, ll pow, const ll mod)
+BigInt ServiceGCD::mod_pow(BigInt a, BigInt pow, const BigInt mod)
 {
-    if (a == 1 || a == 0)
-    {
-        return a;
-    }
-    ll res = 1;
-    a %= mod;
-    while (pow) {
-        if (pow % 2 == 1)
-        {
-            res *= a;
-            res %= mod;
-            pow--;
-        } else
-        {
-            res *= res;
-            res %= mod;
-            pow /= 2;
-        }
-    }
-    return res;
+    return a.mod_exp(pow, mod);
 }
 
-ll ServiceGCD::Legendre(ll a, ll p)
+BigInt ServiceGCD::Legendre(BigInt a, BigInt p)
 {
-    if (a % p == 0)
+    if (a % p == BigInt(0))
     {
-        return 0;
+        return BigInt(0);
     }
-    if (mod_pow(a, (p - 1) / 2, p) == 1)
+    if (mod_pow(a, (p - BigInt(1)) / BigInt(2), p) == BigInt(1))
     {
-        return 1;
+        return BigInt(1);
     }
-    return -1;
+    return BigInt(-1);
 }
 
-ll sign_Jacobi(ll p)
+BigInt sign_Jacobi(BigInt p)
 {
-    ll tmp = p % 8;
-    if (tmp == 1 || tmp == 7)
-        return 1;
-    return -1;
+    BigInt tmp = p % BigInt(8);
+    if (tmp == BigInt(1) || tmp == BigInt(7))
+        return BigInt(1);
+    return BigInt(-1);
 }
 
-ll ServiceGCD::Jacobi(ll a, ll p)
+BigInt ServiceGCD::Jacobi(BigInt a, BigInt p)
 {
-    ll res = 1;
+    auto res = BigInt(1);
     a %= p;
-    if (a == 1 || a == 0)
+    if (a == BigInt(1) || a == BigInt(0))
     {
         return a;
     }
-    if (a % 2 == 0)
+    if (a % BigInt(2) == BigInt(1))
     {
-        ll tmp = a & (-a);
-        while (tmp > 1)
+        while (a % BigInt(2) == BigInt(0))
         {
             res *= sign_Jacobi(p);
-            a >>= 1;
-            tmp >>= 1;
+            a /= BigInt(2);
         }
         return res * Jacobi(a, p);
     }
-    res *= Jacobi(p, a) * (((a - 1) % 4 == 0 || (p - 1) % 4 == 0) ? 1 : -1);
+    res *= Jacobi(p, a) * BigInt(((a - BigInt(1)) % BigInt(4) == BigInt(0)
+        || (p - BigInt(1)) % BigInt(4) == BigInt(0)) ? 1 : -1);
     return res;
 }
