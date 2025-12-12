@@ -4,6 +4,7 @@
 #include "DES/DES.h"
 #include "DEAL/DEAL.h"
 #include "RSA/ServiceGCD.h"
+#include "RSA/Ferma.h"
 
 
 int main()
@@ -72,6 +73,7 @@ int main()
     // delete[] encrtext;
     // delete[] decrtext;
 
-    auto serv = ServiceGCD();
-    std::cout << "RESULT: " << serv.Jacobi(5, 21) << std::endl;
+    // auto serv = ServiceGCD();
+    Ferma f;
+    std::cout << "RESULT: " << f.isPrime(BigInt("345678903125312794092346214123"), 0.9) << std::endl;
 }
