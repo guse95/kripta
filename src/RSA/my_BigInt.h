@@ -273,7 +273,7 @@ public:
         if (*this >= other) {
             if (other == BigInt(2))
             {
-                return BigInt(other.dig.back() & 1);
+                return BigInt(this->dig.back() & 1);
             }
             BigInt res = *this - (*this / other) * other;
             return res;
@@ -284,6 +284,11 @@ public:
     BigInt& operator%=(const BigInt& other)
     {
         if (*this >= other) {
+            if (other == BigInt(2))
+            {
+                *this = BigInt(this->dig.back() & 1);
+                return *this;
+            }
             *this = *this - (*this / other) * other;
             return *this;
         }

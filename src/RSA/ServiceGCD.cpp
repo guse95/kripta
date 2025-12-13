@@ -63,7 +63,7 @@ BigInt ServiceGCD::Jacobi(BigInt a, BigInt p)
     {
         return a;
     }
-    if (a % BigInt(2) == BigInt(1))
+    if (a % BigInt(2) == BigInt(0))
     {
         while (a % BigInt(2) == BigInt(0))
         {

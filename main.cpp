@@ -1,10 +1,12 @@
 #include <iostream>
 
 #include "CipherContext.h"
+#include "SoloveiStrassen.h"
 #include "DES/DES.h"
 #include "DEAL/DEAL.h"
 #include "RSA/ServiceGCD.h"
 #include "RSA/Ferma.h"
+#include "RSA/SoloveiStrassen.h"
 
 
 int main()
@@ -74,6 +76,6 @@ int main()
     // delete[] decrtext;
 
     // auto serv = ServiceGCD();
-    Ferma f;
-    std::cout << "RESULT: " << f.isPrime(BigInt("345678903125312794092346214123"), 0.9) << std::endl;
+    Ferma s;
+    std::cout << "RESULT: " << s.isPrime(BigInt("9746347772161"), 0.9) << std::endl;
 }

@@ -23,10 +23,10 @@ class PrimeTestBase : public IPrimeTest {
         {
             tmp_prob *= prob_for_one_iter;
             BigInt a = BigInt::rnd(num);
-            if (ServiceGCD::gcd(a, num) != BigInt(1))
-            {
-                return false;
-            }
+            // if (ServiceGCD::gcd(a, num) != BigInt(1))
+            // {
+            //     return false;
+            // }
             if (!testIteration(a, num))
             {
                 return false;
