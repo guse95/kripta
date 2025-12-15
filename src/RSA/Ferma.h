@@ -1,7 +1,7 @@
 #ifndef FERMA_H
 #define FERMA_H
 #include "PrimeTestBase.h"
-#include "my_BigInt.h"
+#include <gmpxx.h>
 
 class Ferma : public PrimeTestBase {
     public:
@@ -9,7 +9,7 @@ class Ferma : public PrimeTestBase {
 
     [[nodiscard]] double getProbForOneIter() const final;
 
-    [[nodiscard]] bool testIteration(const BigInt& a, const BigInt& n) const final;
+    [[nodiscard]] bool testIteration(const mpz_class& a, const mpz_class& n) const final;
 };
 
 
