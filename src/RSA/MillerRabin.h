@@ -9,7 +9,7 @@ public:
 
     [[nodiscard]] double getProbForOneIter() const final;
 
-    [[nodiscard]] bool testIteration(const BigInt& a, const BigInt& n) const final;
+    [[nodiscard]] bool testIteration(const mpz_class& a, const mpz_class& n) const final;
 };
 
 
