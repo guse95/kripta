@@ -1,7 +1,7 @@
 #ifndef SOLOVEISTRASSEN_H
 #define SOLOVEISTRASSEN_H
 #include "PrimeTestBase.h"
-#include "my_BigInt.h"
+
 
 
 class SoloveiStrassen : public PrimeTestBase {
@@ -10,7 +10,7 @@ public:
 
     [[nodiscard]] double getProbForOneIter() const final;
 
-    [[nodiscard]] bool testIteration(const BigInt& a, const BigInt& n) const final;
+    [[nodiscard]] bool testIteration(const mpz_class& a, const mpz_class& n) const final;
 };
 
 #endif
