@@ -3,8 +3,7 @@
 
 #include <cstdint>
 #include <iostream>
-
-#include "my_BigInt.h"
+#include <gmpxx.h>
 
 class ServiceGCD {
 
@@ -12,15 +11,15 @@ public:
     ServiceGCD() = default;
     ~ServiceGCD() = default;
 
-    static BigInt gcd(BigInt x, BigInt y);
+    static mpz_class gcd(mpz_class x, mpz_class y);
 
-    static BigInt exp_gcd(BigInt a, BigInt b, BigInt &x, BigInt &y);
+    static mpz_class exp_gcd(mpz_class a, mpz_class b, mpz_class &x, mpz_class &y);
 
-    static BigInt mod_pow(BigInt a, BigInt pow, BigInt mod);
+    static mpz_class mod_pow(const mpz_class& a, const mpz_class& pow, const mpz_class& mod);
 
-    static BigInt Legendre(BigInt a, BigInt p);
+    static mpz_class Legendre(mpz_class a, mpz_class p);
 
-    static BigInt Jacobi(BigInt a, BigInt p);
+    static mpz_class Jacobi(mpz_class a, mpz_class p);
 };
 
 

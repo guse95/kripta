@@ -1,9 +1,9 @@
 #include "ServiceGCD.h"
 
 
-BigInt ServiceGCD::gcd(BigInt x, BigInt y)
+mpz_class ServiceGCD::gcd(mpz_class x, mpz_class y)
 {
-    while (x != BigInt(0))
+    while (x != 0)
     {
         if (x <= y)
         {
@@ -14,65 +14,76 @@ BigInt ServiceGCD::gcd(BigInt x, BigInt y)
     return y;
 }
 
-BigInt ServiceGCD::exp_gcd(BigInt a, BigInt b, BigInt &x, BigInt &y)
+mpz_class ServiceGCD::exp_gcd(mpz_class a, mpz_class b, mpz_class &x, mpz_class &y)
 {
-    if (a == BigInt(0))
+    if (b == 0)
     {
-        x = BigInt(0);
-        y = BigInt(1);
-        return b;
+        x = 1;
+        y = 0;
+        return a;
     }
-    BigInt x1, y1;
-    BigInt g = exp_gcd(b % a, a, x1, y1);
-    x = y1 - (b % a) * x1;
-    y = x1;
+    mpz_class x1, y1;
+    mpz_class g = exp_gcd(b, a % b, x1, y1);
+    x = y1;
+    y = x1 - (a / b) * y1;
     return g;
 }
 
-BigInt ServiceGCD::mod_pow(BigInt a, BigInt pow, const BigInt mod)
+mpz_class ServiceGCD::mod_pow(const mpz_class& a, const mpz_class& pow, const mpz_class& mod)
 {
-    return a.mod_exp(pow, mod);
-}
-
-BigInt ServiceGCD::Legendre(BigInt a, BigInt p)
-{
-    if (a % p == BigInt(0))
-    {
-        return BigInt(0);
+    if (pow < 2) {
+        if (pow == 1) {
+            return a % mod;
+        }
+        return 1;
     }
-    if (mod_pow(a, (p - BigInt(1)) / BigInt(2), p) == BigInt(1))
-    {
-        return BigInt(1);
+    mpz_class res = mod_pow(a, pow/2, mod);
+    res = (res * res) % mod;
+    if (pow % 2 == 1) {
+        res = (res * a) % mod;
     }
-    return BigInt(-1);
+    return res;
 }
 
-BigInt sign_Jacobi(BigInt p)
+mpz_class ServiceGCD::Legendre(mpz_class a, mpz_class p)
 {
-    BigInt tmp = p % BigInt(8);
-    if (tmp == BigInt(1) || tmp == BigInt(7))
-        return BigInt(1);
-    return BigInt(-1);
+    if (a % p == 0)
+    {
+        return 0;
+    }
+    if (mod_pow(a, (p - 1) / 2, p) == 1)
+    {
+        return 1;
+    }
+    return -1;
 }
 
-BigInt ServiceGCD::Jacobi(BigInt a, BigInt p)
+mpz_class sign_Jacobi(mpz_class p)
 {
-    auto res = BigInt(1);
+    mpz_class tmp = p % 8;
+    if (tmp == 1 || tmp == 7)
+        return 1;
+    return -1;
+}
+
+mpz_class ServiceGCD::Jacobi(mpz_class a, mpz_class p)
+{
+    mpz_class res = 1;
     a %= p;
-    if (a == BigInt(1) || a == BigInt(0))
+    if (a == 1 || a == 0)
     {
         return a;
     }
-    if (a % BigInt(2) == BigInt(0))
+    if (a % 2 == 0)
     {
-        while (a % BigInt(2) == BigInt(0))
+        while (a % 2 == 0)
         {
             res *= sign_Jacobi(p);
-            a /= BigInt(2);
+            a /= 2;
         }
         return res * Jacobi(a, p);
     }
-    res *= Jacobi(p, a) * BigInt(((a - BigInt(1)) % BigInt(4) == BigInt(0)
-        || (p - BigInt(1)) % BigInt(4) == BigInt(0)) ? 1 : -1);
+    res *= Jacobi(p, a) * (((a - 1) % 4 == 0
+        || (p - 1) % 4 == 0) ? 1 : -1);
     return res;
 }
