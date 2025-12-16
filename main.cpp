@@ -82,7 +82,7 @@ int main()
     // std::cout << "RESULT: " << s.isPrime(mpz_class("17"), 0.5) << std::endl;
 
 
-    RSA rsa_alg(RSA::MILLER_RABIN, 0.9, 1024);
+    RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 4096);
     rsa_alg.generateKeys();
     mpz_class mess("12345678901234567890");
     mpz_class encr_res = rsa_alg.encrypt(mess);

@@ -16,16 +16,16 @@ mpz_class ServiceGCD::gcd(mpz_class x, mpz_class y)
 
 mpz_class ServiceGCD::exp_gcd(mpz_class a, mpz_class b, mpz_class &x, mpz_class &y)
 {
-    if (b == 0)
+    if (a == 0)
     {
-        x = 1;
-        y = 0;
-        return a;
+        x = 0;
+        y = 1;
+        return b;
     }
     mpz_class x1, y1;
-    mpz_class g = exp_gcd(b, a % b, x1, y1);
-    x = y1;
-    y = x1 - (a / b) * y1;
+    mpz_class g = exp_gcd(b % a, a, x1, y1);
+    x = y1 - (b / a) * x1;
+    y = x1;
     return g;
 }
 
