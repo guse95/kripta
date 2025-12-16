@@ -1,12 +1,15 @@
 #include <iostream>
 
 #include "CipherContext.h"
+#include "MillerRabin.h"
+#include "RSA.h"
 #include "SoloveiStrassen.h"
 #include "DES/DES.h"
 #include "DEAL/DEAL.h"
 #include "RSA/ServiceGCD.h"
 #include "RSA/Ferma.h"
 #include "RSA/SoloveiStrassen.h"
+#include <gmpxx.h>
 
 
 int main()
@@ -75,7 +78,17 @@ int main()
     // delete[] encrtext;
     // delete[] decrtext;
 
-    // auto serv = ServiceGCD();
-    Ferma s;
-    std::cout << "RESULT: " << s.isPrime(BigInt("9746347772161"), 0.9) << std::endl;
+    // MillerRabin s;
+    // std::cout << "RESULT: " << s.isPrime(mpz_class("17"), 0.5) << std::endl;
+
+
+    RSA rsa_alg(RSA::MILLER_RABIN, 0.9, 1024);
+    rsa_alg.generateKeys();
+    mpz_class mess("12345678901234567890");
+    mpz_class encr_res = rsa_alg.encrypt(mess);
+    std::cout << "Encrypted: " << encr_res << '\n';
+
+    mpz_class decr_res = rsa_alg.decrypt(encr_res);
+    std::cout << "Decrypted: " << decr_res << '\n';
+
 }
