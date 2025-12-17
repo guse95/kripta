@@ -50,18 +50,92 @@ RSA::KeyGenerator::KeyGenerator(PrimaryTest _test_type, double _min_probability,
     }
 }
 
-bool is_candidate(const mpz_class& n) {
-    static const std::vector<int> small_primes = {
-        2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
-        31, 37, 41, 43, 47, 53, 59, 61, 67,
-        71, 73, 79, 83, 89, 97, 101, 103, 107};
-    for (int prime : small_primes) {
-        if (n % prime == 0) return false;
+void RSA::KeyGenerator::generateKeys(RSA& papa) const
+{
+    // p и q
+    std::random_device rd;
+    thread_local gmp_randclass rng(gmp_randinit_default);
+    rng.seed(rd());
+
+    mpz_class phi_n;
+
+    while (true) {
+        mpz_class p = rng.get_z_bits(bit_len) | 1;
+        p |= (mpz_class(1) << (bit_len - 1));
+        while (!test_type->isPrime(p, min_probability))
+        {
+            p = rng.get_z_bits(bit_len) | 1;
+            p |= (mpz_class(1) << (bit_len - 1));
+#ifdef DEBUG_HARD
+            std::cout << p << '\n';
+#endif
+        }
+#ifdef DEBUG
+        std::cout << p << '\n';
+#endif
+
+        mpz_class diff(1);
+        diff <<= bit_len / 2 - 1;
+
+#if defined(DEBUG) || defined(DEBUG_HARD)
+        std::cout << "STARTED Q:\n";
+#endif
+        mpz_class q = rng.get_z_bits(bit_len) | 1;
+        q |= (mpz_class(1) << (bit_len - 1));
+
+        while (abs(p - q) <= diff || !test_type->isPrime(q, min_probability))
+        {
+            q = rng.get_z_bits(bit_len) | 1;
+            q |= (mpz_class(1) << (bit_len - 1));
+#ifdef DEBUG_HARD
+            std::cout << q << '\n';
+#endif
+        }
+#ifdef DEBUG
+        std::cout << q << '\n';
+#endif
+        // p и q
+
+        papa.key_pub.first = 65537;
+
+        mpz_class n = p * q;
+        papa.key_pub.second = n;
+        papa.key_priv.second = n;
+
+        phi_n = (p - 1) * (q - 1);
+
+        mpz_class pohyi;
+        mpz_class g = ServiceGCD::exp_gcd(papa.key_pub.first, phi_n, papa.key_priv.first, pohyi);
+
+        if (g != 1)
+        {
+            std::cout << "gcd: " << g << '\n';
+            throw std::runtime_error("Inverse doesn't exist");
+        }
+
+        papa.key_priv.first %= phi_n;
+        if (papa.key_priv.first < 0) {
+            papa.key_priv.first += phi_n;
+        }
+        if (papa.key_priv.first > sqrt(sqrt(n)) / 3)
+        {
+            break;
+        }
     }
-    return true;
+
+    mpz_class tmp = (papa.key_pub.first * papa.key_priv.first) % phi_n;
+
+    if (tmp != 1)
+    {
+        std::cout << "NE OBRATNIY" << '\n';
+        std::cout << papa.key_pub.first << '\n';
+        std::cout << papa.key_priv.first << '\n';
+        std::cout << tmp << '\n';
+        std::cout << phi_n << '\n';
+    }
 }
 
-void RSA::KeyGenerator::generateKeys(RSA& papa) const
+void RSA::KeyGenerator::generateWeakKeys(RSA& papa) const
 {
     // p и q
     std::random_device rd;
@@ -70,7 +144,7 @@ void RSA::KeyGenerator::generateKeys(RSA& papa) const
 
     mpz_class p = rng.get_z_bits(bit_len) | 1;
     p |= (mpz_class(1) << (bit_len - 1));
-    while (!is_candidate(p) || !test_type->isPrime(p, min_probability))
+    while (!test_type->isPrime(p, min_probability))
     {
         p = rng.get_z_bits(bit_len) | 1;
         p |= (mpz_class(1) << (bit_len - 1));
@@ -82,8 +156,6 @@ void RSA::KeyGenerator::generateKeys(RSA& papa) const
     std::cout << p << '\n';
 #endif
 
-    mpz_class diff(1);
-    diff <<= bit_len / 2 - 1;
 
 #if defined(DEBUG) || defined(DEBUG_HARD)
     std::cout << "STARTED Q:\n";
@@ -91,7 +163,7 @@ void RSA::KeyGenerator::generateKeys(RSA& papa) const
     mpz_class q = rng.get_z_bits(bit_len) | 1;
     q |= (mpz_class(1) << (bit_len - 1));
 
-    while (!is_candidate(p) || abs(p - q) <= diff || !test_type->isPrime(q, min_probability))
+    while (!test_type->isPrime(q, min_probability))
     {
         q = rng.get_z_bits(bit_len) | 1;
         q |= (mpz_class(1) << (bit_len - 1));
@@ -104,16 +176,21 @@ void RSA::KeyGenerator::generateKeys(RSA& papa) const
 #endif
     // p и q
 
-    papa.key_pub.first = 65537;
-
     mpz_class n = p * q;
+    mpz_class phi_n = (p - 1) * (q - 1);
+
+    do {
+        papa.key_priv.first = 2 + (rng.get_z_range(sqrt(sqrt(n)) / 3) | 1);
+    } while (ServiceGCD::gcd(papa.key_priv.first, phi_n) != 1);
+#ifdef DEBUG
+    std::cout << "WEAK d: " << papa.key_priv.first << '\n';
+#endif
     papa.key_pub.second = n;
     papa.key_priv.second = n;
 
-    mpz_class phi_n = (p - 1) * (q - 1);
-
     mpz_class pohyi;
-    mpz_class g = ServiceGCD::exp_gcd(papa.key_pub.first, phi_n, papa.key_priv.first, pohyi);
+    mpz_class g = ServiceGCD::exp_gcd(papa.key_priv.first, phi_n, papa.key_pub.first, pohyi);
+
 
     if (g != 1)
     {
@@ -121,10 +198,13 @@ void RSA::KeyGenerator::generateKeys(RSA& papa) const
         throw std::runtime_error("Inverse doesn't exist");
     }
 
-    papa.key_priv.first %= phi_n;
-    if (papa.key_priv.first < 0) {
-        papa.key_priv.first += phi_n;
+    papa.key_pub.first %= phi_n;
+    if (papa.key_pub.first < 0) {
+        papa.key_pub.first += phi_n;
     }
+#ifdef DEBUG
+    std::cout << "WEAK e: " << papa.key_pub.first << '\n';
+#endif
 
     mpz_class tmp = (papa.key_pub.first * papa.key_priv.first) % phi_n;
 
@@ -144,6 +224,11 @@ RSA::RSA(PrimaryTest _test_type, double _min_probability, uint64_t _bit_len) :
 void RSA::generateKeys()
 {
     keygen.generateKeys(*this);
+}
+
+void RSA::generateWeakKeys()
+{
+    keygen.generateWeakKeys(*this);
 }
 
 mpz_class RSA::encrypt(const mpz_class& mess) const

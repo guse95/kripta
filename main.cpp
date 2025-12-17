@@ -11,6 +11,8 @@
 #include "RSA/SoloveiStrassen.h"
 #include <gmpxx.h>
 
+#include "WienerAttack.h"
+
 
 int main()
 {
@@ -83,7 +85,7 @@ int main()
 
 
     RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 4096);
-    rsa_alg.generateKeys();
+    rsa_alg.generateWeakKeys();
     mpz_class mess("12345678901234567890");
     mpz_class encr_res = rsa_alg.encrypt(mess);
     std::cout << "Encrypted: " << encr_res << '\n';
@@ -91,4 +93,15 @@ int main()
     mpz_class decr_res = rsa_alg.decrypt(encr_res);
     std::cout << "Decrypted: " << decr_res << '\n';
 
+    WienerAttack wa;
+    // auto res = wa.chainFraction(706, 1124);
+    // for (auto i : res)
+    // {
+    //     std::cout << i << '\n';
+    // }
+
+    auto d = wa.predictKeyPriv(rsa_alg.key_pub.first, rsa_alg.key_pub.second);
+
+    std::cout << "Predicted d: " << d << '\n';
+    std::cout << "Predicted: " << ServiceGCD::mod_pow(encr_res, d, rsa_alg.key_pub.second) << '\n';
 }

@@ -14,9 +14,10 @@ public:
         SOLOVAY_STRASSEN,
         MILLER_RABIN
     };
-private:
 
     std::pair<mpz_class, mpz_class> key_pub;
+
+private:
     std::pair<mpz_class, mpz_class> key_priv;
 
     class KeyGenerator
@@ -29,6 +30,8 @@ private:
         ~KeyGenerator() = default;
 
         void generateKeys(RSA& papa) const;
+
+        void generateWeakKeys(RSA& papa) const;
     };
 
     KeyGenerator keygen;
@@ -36,6 +39,8 @@ public:
     RSA(PrimaryTest _test_type, double _min_probability, uint64_t _bit_len);
 
     void generateKeys();
+
+    void generateWeakKeys();
 
     mpz_class encrypt(const mpz_class& mess) const;
 
