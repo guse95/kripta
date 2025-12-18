@@ -13,6 +13,7 @@
 
 #include "WienerAttack.h"
 #include "AES/AES.h"
+#include "TripleDES/TripleDES.h"
 
 
 int main()
@@ -48,8 +49,9 @@ int main()
 
     // auto alg = DES();
     // auto alg2 = DEAL(128);
-    auto alg3 = AES(24, 16, key2);
-    const CipherContext Cont(&alg3, key2, Mode::ECB, Padding::ZEROS, 24, iv_aes_192, {2});
+    // auto alg3 = AES(24, 16, key2);
+    auto alg4 = TripleDES();
+    const CipherContext Cont(&alg4, key_aes_192, Mode::ECB, Padding::ZEROS, 8, iv, {2});
 
     // uint8_t text_deal[16] = "Some text to ch";
     // uint8_t encr_text[16] = {0};
