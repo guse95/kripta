@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "CipherContext.h"
+#include "RSA.h"
 #include "AES/AES.h"
 #include "DES/DES.h"
 #include "DEAL/DEAL.h"
@@ -62,6 +63,16 @@ int main()
     auto alg_aes_256_192 = AES(32, 24, key_deal_192);
     auto alg_aes_256_256 = AES(32, 32, key_deal_256);
 
+    RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 1024);
+    rsa_alg.generateKeys();
+
+    std::cout << "Encryption started" << '\n';
+
+    rsa_alg.encrypt("kotik.png", "encrypted.txt");
+    std::cout << "Decryption started" << '\n';
+
+    rsa_alg.decrypt("encrypted.txt", "decrypted.png");
+
     // CipherContext Cont(&alg_aes_192_192, key_deal_192, Mode::ECB, Padding::PKCS7, 24, iv_aes_192, {8});
 
     // Cont.encrypt("vid.mp4", "encrypted.txt");
@@ -111,15 +122,15 @@ int main()
 
 
 
-    for (int i = 0; i < 7; i++)
-    {
-        CipherContext Cont(&alg_tripleDES, key_deal_192, modes[i], Padding::ZEROS, 8, iv_des, {8});
-
-        std::string ind = std::to_string(i);
-        std::string encr_file_name = "EncrRes/encr_" + ind + ".txt";
-        std::string decr_file_name = "DecrRes/decr_" + ind + ".png";
-
-        Cont.encrypt("33.png", encr_file_name);
-        Cont.decrypt(encr_file_name, decr_file_name);
-    }
+    // for (int i = 0; i < 7; i++)
+    // {
+    //     CipherContext Cont(&alg_tripleDES, key_deal_192, modes[i], Padding::ZEROS, 8, iv_des, {8});
+    //
+    //     std::string ind = std::to_string(i);
+    //     std::string encr_file_name = "EncrRes/encr_" + ind + ".txt";
+    //     std::string decr_file_name = "DecrRes/decr_" + ind + ".png";
+    //
+    //     Cont.encrypt("33.png", encr_file_name);
+    //     Cont.decrypt(encr_file_name, decr_file_name);
+    // }
 }
