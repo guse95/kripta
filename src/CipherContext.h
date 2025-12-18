@@ -772,7 +772,7 @@ public:
             return;
         }
 
-        constexpr size_t BLOCK_SIZE = 16384;
+        constexpr size_t BLOCK_SIZE = 24576;
         uint8_t buffer[BLOCK_SIZE];
 
         while (in) {
@@ -812,7 +812,7 @@ public:
         }
 
 
-        const size_t BLOCK_SIZE = 16384 + block_size * (1 + (mode == Mode::RandomDelta));
+        const size_t BLOCK_SIZE = 24576 + block_size * (1 + (mode == Mode::RandomDelta));
         uint8_t buffer[BLOCK_SIZE];
 
         while (in) {
