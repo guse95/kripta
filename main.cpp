@@ -12,6 +12,7 @@
 #include <gmpxx.h>
 
 #include "WienerAttack.h"
+#include "AES/AES.h"
 
 
 int main()
@@ -25,15 +26,36 @@ int main()
     uint8_t iv2[16] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', 'g', 'f', 'e', 'd', 'c', 'b', 'a'};
     uint8_t key2[16] = {'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'a', 's', 'd', 'f', 'g', 'h'};
 
+
+    uint8_t iv_aes_192[24] = {
+        'n', 'm', ',', '.', '/', 'a', 's', '1',
+        '2', '3', '4', '5', '6', '7', '8', '9',
+        'g', 'f', 'e', 'd', 'c', 'b', 'a', 'o'};
+    uint8_t key_aes_192[24] = {
+        'j', 'u', 'g', '1', '2', 'n', 'a', 's',
+        'd', 'f', 'e', 'd', 'c', 'b', 'm', ',',
+        '.', '/', 'a', 's', 'd', 'f', 'g', 'h'};
+
+    uint8_t iv_aes_256[32] = {
+        '5', '6', '7', '8', '9', 'g', 'f', 'e',
+        'n', 'm', ',', '.', '/', 'a', 's', '1',
+        '2', '3', '4', '5', '6', '7', '8', '9',
+        'g', 'f', 'e', 'd', 'c', 'b', 'a', 'Z'};
+    uint8_t key_aes_256[32] = {'p', 'o', 'i', 'u', '9', '8', '7',
+        '6', '5', '4', 'a', 's', 'd', 'f', 'g', 'h',
+        'z', 'x', 'c', 'v', 'b', 'n', 'm', 's', 'd',
+        'k', 'l', 'h', 'n', 'm', 'g', 'h'};
+
     // auto alg = DES();
     // auto alg2 = DEAL(128);
-    // const CipherContext Cont(&alg2, key2, Mode::RandomDelta, Padding::ZEROS, 16, iv2, {2});
+    auto alg3 = AES(24, 16, key2);
+    const CipherContext Cont(&alg3, key2, Mode::ECB, Padding::ZEROS, 24, iv_aes_192, {2});
 
     // uint8_t text_deal[16] = "Some text to ch";
     // uint8_t encr_text[16] = {0};
     // uint8_t decr_text[16] = {0};
     //
-    // alg2->encrypt(text_deal, encr_text, key2);
+    // alg3.encrypt(text_deal, encr_text, key2);
     //
     // std::cout << "Encrypted text: " << std::endl;
     // for (int i = 0; i < 16; i++)
@@ -42,7 +64,7 @@ int main()
     // }
     // std::cout << std::endl;
     //
-    // alg2->decrypt(encr_text, decr_text, key2);
+    // alg3.decrypt(encr_text, decr_text, key2);
     //
     // std::cout << "Decrypted text: " << std::endl;
     // for (uint64_t i = 0; i < 16; i++)
@@ -53,55 +75,59 @@ int main()
     // std::cout << std::endl;
 
 
-    // uint64_t encr_sz;
-    // uint8_t* encrtext = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encr_sz);
-    //
-    // if (encrtext == nullptr)
-    // {
-    //     std::cerr << "Encrypt failed" << std::endl;
-    // }
-    // std::cout << "Encrypted text: " << std::endl;
-    // for (int i = 0; i < encr_sz; i++)
-    // {
-    //     std::cout << encrtext[i] << " ";
-    // }
-    // std::cout << std::endl;
-    //
-    // uint64_t decr_sz;
-    // uint8_t* decrtext = Cont.decrypt(encrtext, encr_sz, decr_sz);
-    //
-    // std::cout << "Decrypted text: " << std::endl;
-    // for (uint64_t i = 0; i < decr_sz - 1; i++)
-    // {
-    //     std::cout << decrtext[i];
-    // }
-    // std::cout << std::endl;
-    //
-    // delete[] encrtext;
-    // delete[] decrtext;
+    uint64_t encr_sz;
+    uint8_t* encrtext = Cont.encrypt(text, sizeof(text) / sizeof(uint8_t), encr_sz);
+
+    if (encrtext == nullptr)
+    {
+        std::cerr << "Encrypt failed" << std::endl;
+    }
+    std::cout << "Encrypted text: " << std::endl;
+    for (int i = 0; i < encr_sz; i++)
+    {
+        std::cout << encrtext[i] << " ";
+    }
+    std::cout << std::endl;
+
+    uint64_t decr_sz;
+    uint8_t* decrtext = Cont.decrypt(encrtext, encr_sz, decr_sz);
+
+    std::cout << "Decrypted text: " << std::endl;
+    for (uint64_t i = 0; i < decr_sz - 1; i++)
+    {
+        std::cout << decrtext[i];
+    }
+    std::cout << std::endl;
+
+    delete[] encrtext;
+    delete[] decrtext;
+
+
+
+
 
     // MillerRabin s;
     // std::cout << "RESULT: " << s.isPrime(mpz_class("17"), 0.5) << std::endl;
 
 
-    RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 4096);
-    rsa_alg.generateWeakKeys();
-    mpz_class mess("12345678901234567890");
-    mpz_class encr_res = rsa_alg.encrypt(mess);
-    std::cout << "Encrypted: " << encr_res << '\n';
-
-    mpz_class decr_res = rsa_alg.decrypt(encr_res);
-    std::cout << "Decrypted: " << decr_res << '\n';
-
-    WienerAttack wa;
-    // auto res = wa.chainFraction(706, 1124);
-    // for (auto i : res)
-    // {
-    //     std::cout << i << '\n';
-    // }
-
-    auto d = wa.predictKeyPriv(rsa_alg.key_pub.first, rsa_alg.key_pub.second);
-
-    std::cout << "Predicted d: " << d << '\n';
-    std::cout << "Predicted: " << ServiceGCD::mod_pow(encr_res, d, rsa_alg.key_pub.second) << '\n';
+    // RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 4096);
+    // rsa_alg.generateWeakKeys();
+    // mpz_class mess("12345678901234567890");
+    // mpz_class encr_res = rsa_alg.encrypt(mess);
+    // std::cout << "Encrypted: " << encr_res << '\n';
+    //
+    // mpz_class decr_res = rsa_alg.decrypt(encr_res);
+    // std::cout << "Decrypted: " << decr_res << '\n';
+    //
+    // WienerAttack wa;
+    // // auto res = wa.chainFraction(706, 1124);
+    // // for (auto i : res)
+    // // {
+    // //     std::cout << i << '\n';
+    // // }
+    //
+    // auto d = wa.predictKeyPriv(rsa_alg.key_pub.first, rsa_alg.key_pub.second);
+    //
+    // std::cout << "Predicted d: " << d << '\n';
+    // std::cout << "Predicted: " << ServiceGCD::mod_pow(encr_res, d, rsa_alg.key_pub.second) << '\n';
 }
