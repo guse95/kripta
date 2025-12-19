@@ -12,8 +12,6 @@ class PrimeTestBase : public IPrimeTest {
 
     [[nodiscard]] virtual bool testIteration(const mpz_class& a, const mpz_class& n) const = 0;
 
-    [[nodiscard]] virtual double getProbForOneIter() const = 0;
-
     [[nodiscard]] bool isPrime(const mpz_class& num, const double min_probability) const override
     {
         static const std::vector<int> small_primes = {
