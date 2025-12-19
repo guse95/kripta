@@ -13,32 +13,10 @@ AES::AES(uint32_t block_len, uint32_t key_len, uint8_t* init_key_ptr) : key_len(
     memcpy(init_key, init_key_ptr, key_len);
 
     uint16_t mod = 0x11B;
-    static const unsigned char BitsSetTable256[256] = {
-        #   define B2(n) n,     n+1,     n+1,     n+2
-        #   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
-        #   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
-        B6(0), B6(1), B6(1), B6(2)
-    };
 
     for (int iter = 0; iter < 256; ++iter) {
         auto i = static_cast<uint8_t>(iter);
         uint8_t y = GaloisField::inverse_mod(i, mod);
-
-        // uint8_t A[] = {
-        //     0b10001111,
-        //     0b11000111,
-        //     0b11100011,
-        //     0b11110001,
-        //     0b11111000,
-        //     0b01111100,
-        //     0b00111110,
-        //     0b00011111
-        // };
-        //
-        // for (int j = 0; j < 8; ++j)
-        // {
-        //     this->S_box[i] |= BitsSetTable256[A[i] * y] << i;
-        // }
 
         uint8_t y0 = (y >> 0) & 1;
         uint8_t y1 = (y >> 1) & 1;
