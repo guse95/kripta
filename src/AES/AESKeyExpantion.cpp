@@ -21,45 +21,21 @@ void AESKeyExpantion::expandKey(const uint8_t* key, uint8_t* new_keys, uint32_t 
         if (i % Nk == 0) {
             uint8_t bytes[4] = { 0 };
 
-            bytes[0] = (temp >> 24) & 0xFF;  // MSB
-            bytes[1] = (temp >> 16) & 0xFF;
-            bytes[2] = (temp >> 8) & 0xFF;
-            bytes[3] = temp & 0xFF;
-
-            // RotWord
-            uint8_t t = bytes[0];
-            bytes[0] = bytes[1];
-            bytes[1] = bytes[2];
-            bytes[2] = bytes[3];
-            bytes[3] = t;
-
-            // SubWord
-            bytes[0] = S_box[bytes[0]];
-            bytes[1] = S_box[bytes[1]];
-            bytes[2] = S_box[bytes[2]];
-            bytes[3] = S_box[bytes[3]];
-
-            // bytes[0] = S_box[(temp >> 16) & 0xFF];
-            // bytes[1] = S_box[(temp >> 8) & 0xFF];
-            // bytes[2] = S_box[temp & 0xFF];
-            // bytes[3] = S_box[(temp >> 24) & 0xFF];
+            bytes[0] = S_box[(temp >> 16) & 0xFF];
+            bytes[1] = S_box[(temp >> 8) & 0xFF];
+            bytes[2] = S_box[temp & 0xFF];
+            bytes[3] = S_box[(temp >> 24) & 0xFF];
 
             temp = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
             temp ^= rcon[(i / Nk) - 1];
         }
         else if (Nk > 6 && i % Nk == 4) {
 
-            uint8_t bytes[4] = {(uint8_t)((temp >> 24) & 0xFF), (uint8_t)((temp >> 16) & 0xFF), (uint8_t)((temp >> 8) & 0xFF), (uint8_t)(temp & 0xFF)};
-            bytes[0] = S_box[bytes[0]];
-            bytes[1] = S_box[bytes[1]];
-            bytes[2] = S_box[bytes[2]];
-            bytes[3] = S_box[bytes[3]];
-
-            // uint8_t bytes[4] = { 0 };
-            // bytes[0] = S_box[(temp >> 24) & 0xFF];
-            // bytes[1] = S_box[(temp >> 16) & 0xFF];
-            // bytes[2] = S_box[(temp >> 8) & 0xFF];
-            // bytes[3] = S_box[temp & 0xFF];
+            uint8_t bytes[4] = { 0 };
+            bytes[0] = S_box[(temp >> 24) & 0xFF];
+            bytes[1] = S_box[(temp >> 16) & 0xFF];
+            bytes[2] = S_box[(temp >> 8) & 0xFF];
+            bytes[3] = S_box[temp & 0xFF];
 
             temp = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
         }

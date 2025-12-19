@@ -63,15 +63,15 @@ int main()
     auto alg_aes_256_192 = AES(32, 24, key_deal_192);
     auto alg_aes_256_256 = AES(32, 32, key_deal_256);
 
-    RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 1024);
-    rsa_alg.generateKeys();
-
-    std::cout << "Encryption started" << '\n';
-
-    rsa_alg.encrypt("kotik.png", "encrypted.txt");
-    std::cout << "Decryption started" << '\n';
-
-    rsa_alg.decrypt("encrypted.txt", "decrypted.png");
+    // RSA rsa_alg(RSA::MILLER_RABIN, 0.99, 1024);
+    // rsa_alg.generateKeys();
+    //
+    // std::cout << "Encryption started" << '\n';
+    //
+    // rsa_alg.encrypt("kotik.png", "encrypted.txt");
+    // std::cout << "Decryption started" << '\n';
+    //
+    // rsa_alg.decrypt("encrypted.txt", "decrypted.png");
 
     // CipherContext Cont(&alg_aes_192_192, key_deal_192, Mode::ECB, Padding::PKCS7, 24, iv_aes_192, {8});
 
@@ -89,36 +89,36 @@ int main()
     // uint8_t* ivs[] = {iv_des, iv_deal, iv_deal, iv_deal};
 
 
-    // ISymmetricCypher* algs[] = {
-    //     &alg_aes_128_128, &alg_aes_128_192, &alg_aes_128_256,
-    //     &alg_aes_192_128, &alg_aes_192_192, &alg_aes_192_256,
-    //     &alg_aes_256_128, &alg_aes_256_192, &alg_aes_256_256,
-    // };
-    // uint8_t* keys[] = {key_deal_128, key_deal_192, key_deal_256};
-    // uint8_t* ivs[] = {iv_deal, iv_aes_192, iv_aes_256};
-    //
+    ISymmetricCypher* algs[] = {
+        &alg_aes_128_128, &alg_aes_128_192, &alg_aes_128_256,
+        &alg_aes_192_128, &alg_aes_192_192, &alg_aes_192_256,
+        &alg_aes_256_128, &alg_aes_256_192, &alg_aes_256_256,
+    };
+    uint8_t* keys[] = {key_deal_128, key_deal_192, key_deal_256};
+    uint8_t* ivs[] = {iv_deal, iv_aes_192, iv_aes_256};
+
     constexpr Mode modes[] = {Mode::ECB, Mode::CBC, Mode::PCBC, Mode::CFB, Mode::OFB, Mode::CTR, Mode::RandomDelta };
-    // constexpr Padding paddings[] = {Padding::ZEROS, Padding::PKCS7, Padding::ANSI_X923, Padding::ISO10126};
-    // uint64_t block_sz[] = {16, 24, 32};
-    //
-    //
-    // for (int iv = 0; iv < 3; iv++)
-    // {
-    //     for (int k = 0; k < 3; k++)
-    //     {
-    //         for (int j = 0; j < 7; j++)
-    //         {
-    //             CipherContext Cont(algs[iv * 3 + k], keys[k], modes[j], Padding::ZEROS, block_sz[iv], ivs[iv], {8});
-    //
-    //             std::string ind = std::to_string(iv) + "_" + std::to_string(k) + "_" + std::to_string(j);
-    //             std::string encr_file_name = "EncrRes/encr_" + ind + ".txt";
-    //             std::string decr_file_name = "DecrRes/decr_" + ind + ".png";
-    //
-    //             Cont.encrypt("33.png", encr_file_name);
-    //             Cont.decrypt(encr_file_name, decr_file_name);
-    //         }
-    //     }
-    // }
+    constexpr Padding paddings[] = {Padding::ZEROS, Padding::PKCS7, Padding::ANSI_X923, Padding::ISO10126};
+    uint64_t block_sz[] = {16, 24, 32};
+
+
+    for (int iv = 0; iv < 3; iv++)
+    {
+        for (int k = 0; k < 3; k++)
+        {
+            for (int j = 0; j < 7; j++)
+            {
+                CipherContext Cont(algs[iv * 3 + k], keys[k], modes[j], Padding::ZEROS, block_sz[iv], ivs[iv], {8});
+
+                std::string ind = std::to_string(iv) + "_" + std::to_string(k) + "_" + std::to_string(j);
+                std::string encr_file_name = "EncrRes/encr_" + ind + ".txt";
+                std::string decr_file_name = "DecrRes/decr_" + ind + ".png";
+
+                Cont.encrypt("33.png", encr_file_name);
+                Cont.decrypt(encr_file_name, decr_file_name);
+            }
+        }
+    }
 
 
 
